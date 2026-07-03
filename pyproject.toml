@@ -1,0 +1,22 @@
+[project]
+name = "qci_exploration"
+version = "0.1.0"
+authors = [
+    { name="Michael Honaker", email="chonaker@andrew.cmu.edu" }
+]
+description = "A short description of my package"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "typer",
+    "python-dotenv",
+    "qci-client>=4",
+]
+
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
