@@ -1,0 +1,10 @@
+# CLI helper
+typer>=0.26
+# Dotenv for loading config
+python-dotenv>=1
+# QCI connection
+qci-client>=5
+# QCI models and base config
+eqc_models>=0.15
+# visualization
+matplotlib>=3

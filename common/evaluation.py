@@ -1,10 +1,8 @@
 """
-evaluation.py
--------------
-Computes and prints classification metrics.
-
-Both model trainers import ``compute_metrics`` and ``print_results``
-so metric logic is never duplicated.
+common/evaluation.py
+--------------------
+Shared metric computation used by both fraud scripts so precision /
+recall / F1 logic is never duplicated.
 """
 
 import numpy as np
@@ -15,7 +13,7 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from qci_exploration.data_types import ClassificationMetrics, ModelResults
+from .data_types import ClassificationMetrics, ModelResults
 
 
 def compute_metrics(
@@ -31,20 +29,20 @@ def compute_metrics(
     Parameters
     ----------
     y_true    : ground-truth labels
-    y_pred    : predicted labels (hard decisions, not probabilities)
+    y_pred    : hard predicted labels (not probabilities)
     split     : "train" or "test" — stored on the returned dataclass
     labels    : ordered label list, e.g. [-1, 1] or [0, 1]
-    pos_label : which label is the positive class (fraud)
-
-    Returns
-    -------
-    ClassificationMetrics
+    pos_label : the label treated as the positive (fraud) class
     """
     precision = precision_score(y_true, y_pred, labels=labels, pos_label=pos_label)
     recall    = recall_score(y_true, y_pred, labels=labels, pos_label=pos_label)
-    f1        = 2.0 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-    accuracy  = accuracy_score(y_true, y_pred)
-    cm        = confusion_matrix(y_true, y_pred, labels=labels)
+    f1        = (
+        2.0 * precision * recall / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
+    accuracy = accuracy_score(y_true, y_pred)
+    cm       = confusion_matrix(y_true, y_pred, labels=labels)
 
     return ClassificationMetrics(
         split=split,
@@ -57,5 +55,5 @@ def compute_metrics(
 
 
 def print_results(results: ModelResults) -> None:
-    """Pretty-print a ModelResults instance to stdout."""
+    """Pretty-print a ModelResults summary to stdout."""
     print(results.summary())
