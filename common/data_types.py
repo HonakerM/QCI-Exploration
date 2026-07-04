@@ -50,7 +50,10 @@ Pure-data dataclasses passed between the data, training, evaluation,
 and visualization layers.  No ML logic lives here.
 """
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -123,6 +126,70 @@ class ModelResults:
 
     train_metrics: ClassificationMetrics
     test_metrics: ClassificationMetrics
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "model_name": self.model_name,
+            "training_time_seconds": self.training_time_seconds,
+            "fpr": self.fpr.tolist(),
+            "tpr": self.tpr.tolist(),
+            "auc": self.auc,
+            "log_loss": self.log_loss,
+            "train_metrics": {
+                "split": self.train_metrics.split,
+                "precision": self.train_metrics.precision,
+                "recall": self.train_metrics.recall,
+                "f1": self.train_metrics.f1,
+                "accuracy": self.train_metrics.accuracy,
+                "confusion_matrix": self.train_metrics.confusion_matrix.tolist(),
+            },
+            "test_metrics": {
+                "split": self.test_metrics.split,
+                "precision": self.test_metrics.precision,
+                "recall": self.test_metrics.recall,
+                "f1": self.test_metrics.f1,
+                "accuracy": self.test_metrics.accuracy,
+                "confusion_matrix": self.test_metrics.confusion_matrix.tolist(),
+            },
+        }
+
+    def save(self, path: str | Path, indent: int = 2) -> None:
+        """Persist the results as JSON so they can be reloaded later."""
+        path = Path(path)
+        path.write_text(json.dumps(self.to_dict(), indent=indent), encoding="utf-8")
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ModelResults":
+        return cls(
+            model_name=data["model_name"],
+            training_time_seconds=float(data["training_time_seconds"]),
+            fpr=np.asarray(data["fpr"], dtype=float),
+            tpr=np.asarray(data["tpr"], dtype=float),
+            auc=float(data["auc"]),
+            log_loss=float(data["log_loss"]),
+            train_metrics=ClassificationMetrics(
+                split=data["train_metrics"]["split"],
+                precision=float(data["train_metrics"]["precision"]),
+                recall=float(data["train_metrics"]["recall"]),
+                f1=float(data["train_metrics"]["f1"]),
+                accuracy=float(data["train_metrics"]["accuracy"]),
+                confusion_matrix=np.asarray(data["train_metrics"]["confusion_matrix"], dtype=int),
+            ),
+            test_metrics=ClassificationMetrics(
+                split=data["test_metrics"]["split"],
+                precision=float(data["test_metrics"]["precision"]),
+                recall=float(data["test_metrics"]["recall"]),
+                f1=float(data["test_metrics"]["f1"]),
+                accuracy=float(data["test_metrics"]["accuracy"]),
+                confusion_matrix=np.asarray(data["test_metrics"]["confusion_matrix"], dtype=int),
+            ),
+        )
+
+    @classmethod
+    def load(cls, path: str | Path) -> "ModelResults":
+        """Load results previously written with `save()`."""
+        path = Path(path)
+        return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
     def summary(self) -> str:
         return (

@@ -19,6 +19,8 @@ Usage
     python qciboost_fraud.py                        # full QPU run
     python qciboost_fraud.py --dry-run              # validate only, no QPU
     python qciboost_fraud.py --save-plots           # save ROC/metric PNGs
+    python qciboost_fraud.py --results-file qciboost_results.json
+    python qciboost_fraud.py --load-results --results-file qciboost_results.json
     python qciboost_fraud.py --train-file /data/train.csv
 
 Credentials
@@ -163,9 +165,9 @@ def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
 
     # Raw scores in [-1, +1]  ->  probabilities in [0, 1]
     raw_scores = model.predict_raw(split.X_test)
-    y_test_probs = np.array([0.5 * (s + 1.0) for s in raw_scores])
-    auc = roc_auc_score(split.y_test, y_test_probs)
-    logloss = log_loss(split.y_test, y_test_probs)
+    y_test_probs = np.array([min(0.5 * (s + 1.0),1.0) for s in raw_scores])
+    auc = float(roc_auc_score(split.y_test, y_test_probs))
+    logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
 
     return ModelResults(
@@ -190,6 +192,8 @@ def main(
     test_file: Path = typer.Option(Path("test.csv"), "--test-file", help="Path to Kaggle test.csv  (default: test.csv)"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Validate credentials and data prep only; skip QPU submission"),
     save_plots: bool = typer.Option(False, "--save-plots", help="Save ROC and metric plots to PNG files instead of showing them"),
+    results_file: Path = typer.Option(Path("qciboost_results.json"), "--results-file", help="Path to save or load serialized model results"),
+    load_results: bool = typer.Option(False, "--load-results", help="Load existing results from --results-file instead of retraining"),
 ) -> None:
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
@@ -202,6 +206,21 @@ def main(
 
     overall_start = time.time()
     LOGGER.info("qciboost_fraud start")
+
+    if load_results:
+        if not results_file.exists():
+            raise FileNotFoundError(f"Results file not found: {results_file}")
+        LOGGER.info("Loading saved results from %s", results_file)
+        results = ModelResults.load(results_file)
+        print_results(results)
+
+        roc_path = Path("qciboost_roc.png") if save_plots else None
+        metric_path = Path("qciboost_metrics.png") if save_plots else None
+        plot_roc_curves([results], save_path=roc_path)
+        plot_metric_comparison([results], save_path=metric_path)
+
+        LOGGER.info("done (%.1fs total)", time.time() - overall_start)
+        return
 
     if dry_run:
         LOGGER.info("--dry-run: credentials OK, loading data and prepping split...")
@@ -221,6 +240,8 @@ def main(
 
     # 4. Train on Dirac-3
     results = train(split, cvq_cfg)
+    results.save(results_file)
+    LOGGER.info("Saved results to %s", results_file)
     print_results(results)
 
     # 5. Visualize
