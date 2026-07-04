@@ -177,7 +177,7 @@ def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
 
 
 def main(
-    train_file: Path = typer.Option(Path("train.csv"), help="Path to Kaggle train.csv (default: train.csv)"),
+    train_file: Path | None = typer.Option(None, help="Optional path to Kaggle train.csv"),
     test_file: Path = typer.Option(Path("test.csv"), help="Path to Kaggle test.csv (default: test.csv)"),
     save_plots: bool = typer.Option(False, "--save-plots", help="Save ROC and metric plots to PNG files instead of showing them"),
     results_file: Path = typer.Option(Path("xgboost_results.json"), "--results-file", help="Path to save or load serialized model results"),
@@ -187,7 +187,7 @@ def main(
     setup_logging()
 
     data_cfg = DataConfig(
-        train_file=Path(train_file),
+        train_file=Path(train_file) if train_file is not None else None,
         test_file=Path(test_file),
     )
     xgb_cfg = XGBoostConfig()

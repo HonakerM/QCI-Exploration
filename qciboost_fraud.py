@@ -188,7 +188,7 @@ def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
 
 
 def main(
-    train_file: Path = typer.Option(Path("train.csv"), "--train-file", help="Path to Kaggle train.csv (default: train.csv)"),
+    train_file: Path | None = typer.Option(None, "--train-file", help="Optional path to Kaggle train.csv"),
     test_file: Path = typer.Option(Path("test.csv"), "--test-file", help="Path to Kaggle test.csv  (default: test.csv)"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Validate credentials and data prep only; skip QPU submission"),
     save_plots: bool = typer.Option(False, "--save-plots", help="Save ROC and metric plots to PNG files instead of showing them"),
@@ -199,7 +199,7 @@ def main(
     setup_logging()
 
     data_cfg = DataConfig(
-        train_file=Path(train_file),
+        train_file=Path(train_file) if train_file is not None else None,
         test_file=Path(test_file),
     )
     cvq_cfg = CVQBoostConfig()

@@ -7,13 +7,14 @@ Model-specific configs live in their respective scripts.
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
 class DataConfig:
     """Paths and split settings shared by both scripts."""
 
-    train_file: Path = Path("train.csv")
+    train_file: Optional[Path] = None
     test_file: Path = Path("test.csv")
 
     # Fraction of the balanced dataset held out for evaluation
