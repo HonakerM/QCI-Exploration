@@ -34,16 +34,23 @@ def plot_roc_curves(
     fig, ax = plt.subplots(figsize=(10, 8))
 
     for r, color in zip(results, _COLORS):
-        ax.plot(r.fpr, r.tpr, linewidth=2, color=color,
-                label=f"{r.model_name} (AUC = {r.auc:.4f})")
+        ax.plot(
+            r.fpr,
+            r.tpr,
+            linewidth=2,
+            color=color,
+            label=f"{r.model_name} (AUC = {r.auc:.4f})",
+        )
 
     ax.plot([0, 1], [0, 1], "k--", linewidth=1, label="Random (AUC = 0.5000)")
     ax.set_xlabel("False Positive Rate", fontsize=12)
     ax.set_ylabel("True Positive Rate", fontsize=12)
     ax.set_title(
-        "ROC Curves: " + " vs ".join(r.model_name for r in results)
+        "ROC Curves: "
+        + " vs ".join(r.model_name for r in results)
         + "\nCredit Card Fraud Detection",
-        fontsize=14, fontweight="bold",
+        fontsize=14,
+        fontweight="bold",
     )
     ax.legend(loc="lower right", fontsize=11)
     ax.grid(True, alpha=0.3)
@@ -65,20 +72,34 @@ def plot_metric_comparison(
     results   : one ModelResults per model
     save_path : write PNG here instead of calling plt.show() if provided
     """
-    names    = [r.model_name for r in results]
-    aucs     = [r.auc for r in results]
-    losses   = [r.log_loss for r in results]
-    colors   = _COLORS[: len(results)]
+    names = [r.model_name for r in results]
+    aucs = [r.auc for r in results]
+    losses = [r.log_loss for r in results]
+    colors = _COLORS[: len(results)]
 
     fig, (ax_auc, ax_loss) = plt.subplots(1, 2, figsize=(14, 6))
 
-    _bar_chart(ax_auc, names, aucs, colors,
-               ylabel="AUC Score", title="AUC-ROC Score Comparison",
-               ylim=(0, 1.0), label_offset=0.02)
+    _bar_chart(
+        ax_auc,
+        names,
+        aucs,
+        colors,
+        ylabel="AUC Score",
+        title="AUC-ROC Score Comparison",
+        ylim=(0, 1.0),
+        label_offset=0.02,
+    )
 
-    _bar_chart(ax_loss, names, losses, colors,
-               ylabel="Log Loss", title="Log Loss Comparison (Lower is Better)",
-               ylim=None, label_offset=max(losses) * 0.02)
+    _bar_chart(
+        ax_loss,
+        names,
+        losses,
+        colors,
+        ylabel="Log Loss",
+        title="Log Loss Comparison (Lower is Better)",
+        ylim=None,
+        label_offset=max(losses) * 0.02,
+    )
 
     plt.tight_layout()
     _save_or_show(fig, save_path)
@@ -87,6 +108,7 @@ def plot_metric_comparison(
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
 
 def _bar_chart(
     ax: plt.Axes,
@@ -98,7 +120,9 @@ def _bar_chart(
     ylim: tuple | None,
     label_offset: float,
 ) -> None:
-    bars = ax.bar(names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5)
+    bars = ax.bar(
+        names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5
+    )
     ax.set_ylabel(ylabel, fontsize=12)
     ax.set_title(title, fontsize=14, fontweight="bold")
     if ylim:
@@ -109,7 +133,10 @@ def _bar_chart(
             bar.get_x() + bar.get_width() / 2,
             val + label_offset,
             f"{val:.4f}",
-            ha="center", va="bottom", fontsize=11, fontweight="bold",
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            fontweight="bold",
         )
 
 

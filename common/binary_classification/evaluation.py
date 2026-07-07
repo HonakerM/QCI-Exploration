@@ -35,14 +35,14 @@ def compute_metrics(
     pos_label : the label treated as the positive (fraud) class
     """
     precision = precision_score(y_true, y_pred, labels=labels, pos_label=pos_label)
-    recall    = recall_score(y_true, y_pred, labels=labels, pos_label=pos_label)
-    f1        = (
+    recall = recall_score(y_true, y_pred, labels=labels, pos_label=pos_label)
+    f1 = (
         2.0 * precision * recall / (precision + recall)
         if (precision + recall) > 0
         else 0.0
     )
     accuracy = accuracy_score(y_true, y_pred)
-    cm       = confusion_matrix(y_true, y_pred, labels=labels)
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
 
     return ClassificationMetrics(
         split=split,

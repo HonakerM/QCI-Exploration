@@ -8,3 +8,5 @@ qci-client>=5
 eqc_models>=0.15
 # visualization
 matplotlib>=3
+# formatting (optional)
+# ruff

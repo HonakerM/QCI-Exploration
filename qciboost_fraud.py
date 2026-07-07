@@ -48,18 +48,14 @@ from dotenv import load_dotenv
 from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 import typer
 
-from common import (
-    DataConfig,
-    DataSplit,
-    compute_metrics,
-    load_data,
+from common.binary_classification.data_types import DataConfig, DataSplit, ModelResults
+from common.binary_classification.data_loader import get_data_split, load_data
+from common.binary_classification.evaluation import compute_metrics, print_results
+from common.binary_classification.visualization import (
     plot_metric_comparison,
     plot_roc_curves,
-    prep_data,
-    print_results,
 )
 from common.logging import get_logger, setup_logging
-from common.data_types import ModelResults
 
 LOGGER = get_logger(__name__)
 
@@ -82,10 +78,6 @@ class CVQBoostConfig:
 
     # 'sequential' is required on Windows (single-threaded weak classifiers)
     weak_cls_strategy: str = "sequential"
-
-    # Names of env vars holding QCi credentials (populated from .env)
-    token_env_var: str = "QCI_TOKEN"
-    api_url_env_var: str = "QCI_API_URL"
 
     def to_qboost_config(self) -> dict:
         return {
@@ -165,7 +157,7 @@ def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
 
     # Raw scores in [-1, +1]  ->  probabilities in [0, 1]
     raw_scores = model.predict_raw(split.X_test)
-    y_test_probs = np.array([min(0.5 * (s + 1.0),1.0) for s in raw_scores])
+    y_test_probs = np.array([min(0.5 * (s + 1.0), 1.0) for s in raw_scores])
     auc = float(roc_auc_score(split.y_test, y_test_probs))
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
@@ -188,20 +180,52 @@ def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
 
 
 def main(
-    train_file: Path | None = typer.Option(None, "--train-file", help="Optional path to Kaggle train.csv"),
-    test_file: Path = typer.Option(Path("test.csv"), "--test-file", help="Path to Kaggle test.csv  (default: test.csv)"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Validate credentials and data prep only; skip QPU submission"),
-    save_plots: bool = typer.Option(False, "--save-plots", help="Save ROC and metric plots to PNG files instead of showing them"),
-    results_file: Path = typer.Option(Path("qciboost_results.json"), "--results-file", help="Path to save or load serialized model results"),
-    load_results: bool = typer.Option(False, "--load-results", help="Load existing results from --results-file instead of retraining"),
+    train_file: Path | None = typer.Option(
+        None, "--train-file", help="Optional path to Kaggle train.csv"
+    ),
+    test_file: Path | None = typer.Option(
+        None, help="Path to Kaggle test.csv (default: test.csv)"
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate credentials and data prep only; skip QPU submission",
+    ),
+    save_plots: bool = typer.Option(
+        False,
+        "--save-plots",
+        help="Save ROC and metric plots to PNG files instead of showing them",
+    ),
+    results_file: Path = typer.Option(
+        Path("qciboost_results.json"),
+        "--results-file",
+        help="Path to save or load serialized model results",
+    ),
+    load_results: bool = typer.Option(
+        False,
+        "--load-results",
+        help="Load existing results from --results-file instead of retraining",
+    ),
+    class_override: str | None = None,
+    additional_feature_names: list[str] = typer.Option(
+        default_factory=lambda: ["Amount", "Time"]
+    ),
+    no_additional_features: bool = False,
 ) -> None:
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
 
     data_cfg = DataConfig(
         train_file=Path(train_file) if train_file is not None else None,
-        test_file=Path(test_file),
+        test_file=Path(test_file) if test_file is not None else None,
+        additional_feature_names=additional_feature_names,
     )
+    if no_additional_features:
+        data_cfg.additional_feature_names = []
+
+    if class_override:
+        data_cfg.class_name = class_override
+
     cvq_cfg = CVQBoostConfig()
 
     overall_start = time.time()
@@ -226,15 +250,20 @@ def main(
         LOGGER.info("--dry-run: credentials OK, loading data and prepping split...")
 
     # 2. Load & engineer features
-    df = load_data(data_cfg)
+    split = get_data_split(data_cfg)
 
-    # 3. Balance + split  ->  labels {-1, +1} (CVQBoost consumes these directly)
-    split = prep_data(df, data_cfg)
     validate_labels(split)
-    LOGGER.info("  %s train rows | %s test rows | %s features", split.n_train, split.n_test, split.n_features)
+    LOGGER.info(
+        "  %s train rows | %s test rows | %s features",
+        split.n_train,
+        split.n_test,
+        split.n_features,
+    )
 
     if dry_run:
-        LOGGER.info("--dry-run complete. Everything looks good - remove --dry-run to submit to Dirac-3.")
+        LOGGER.info(
+            "--dry-run complete. Everything looks good - remove --dry-run to submit to Dirac-3."
+        )
         LOGGER.info("done (%.1fs total)", time.time() - overall_start)
         return
 

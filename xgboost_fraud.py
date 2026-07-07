@@ -33,16 +33,17 @@ from dataclasses import dataclass
 from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 from xgboost import XGBClassifier
 
-from common import (
+from common.binary_classification.data_types import (
     DataConfig,
+    ClassificationMetrics,
     DataSplit,
     ModelResults,
-    compute_metrics,
-    load_data,
+)
+from common.binary_classification.data_loader import get_data_split, load_data
+from common.binary_classification.evaluation import compute_metrics, print_results
+from common.binary_classification.visualization import (
     plot_metric_comparison,
     plot_roc_curves,
-    prep_data,
-    print_results,
 )
 from common.logging import get_logger, setup_logging
 
@@ -129,7 +130,7 @@ _POS_LABEL = 1
 
 def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
     """Fit XGBClassifier and return fully-populated ModelResults."""
-    model = XGBClassifier(**cfg.as_dict())
+    model = XGBClassifier(**cfg.as_dict(), enable_categorical=True)
     LOGGER.info("Training %s...", _MODEL_NAME)
     t0 = time.time()
     model.fit(split.X_train, split.y_train)
@@ -177,30 +178,59 @@ def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
 
 
 def main(
-    train_file: Path | None = typer.Option(None, help="Optional path to Kaggle train.csv"),
-    test_file: Path = typer.Option(Path("test.csv"), help="Path to Kaggle test.csv (default: test.csv)"),
-    save_plots: bool = typer.Option(False, "--save-plots", help="Save ROC and metric plots to PNG files instead of showing them"),
-    results_file: Path = typer.Option(Path("xgboost_results.json"), "--results-file", help="Path to save or load serialized model results"),
-    load_results: bool = typer.Option(False, "--load-results", help="Load existing results from --results-file instead of retraining"),
+    train_file: Path | None = typer.Option(
+        None, help="Optional path to Kaggle train.csv"
+    ),
+    test_file: Path | None = typer.Option(
+        None, help="Path to Kaggle test.csv (default: test.csv)"
+    ),
+    save_plots: bool = typer.Option(
+        False,
+        "--save-plots",
+        help="Save ROC and metric plots to PNG files instead of showing them",
+    ),
+    results_file: Path = typer.Option(
+        Path("xgboost_results.json"),
+        "--results-file",
+        help="Path to save or load serialized model results",
+    ),
+    load_results: bool = typer.Option(
+        False,
+        "--load-results",
+        help="Load existing results from --results-file instead of retraining",
+    ),
+    class_override: str | None = None,
+    additional_feature_names: list[str] = typer.Option(
+        default_factory=lambda: ["Amount", "Time"]
+    ),
+    no_additional_features: bool = False,
 ) -> None:
     """Run XGBoost fraud training and evaluation."""
     setup_logging()
 
     data_cfg = DataConfig(
         train_file=Path(train_file) if train_file is not None else None,
-        test_file=Path(test_file),
+        test_file=Path(test_file) if test_file is not None else None,
+        additional_feature_names=additional_feature_names,
     )
+    if no_additional_features:
+        data_cfg.additional_feature_names = []
+
+    if class_override:
+        data_cfg.class_name = class_override
+
     xgb_cfg = XGBoostConfig()
 
     overall_start = time.time()
     LOGGER.info("xgboost_fraud start")
 
-    # 1. Load & engineer features
-    df = load_data(data_cfg)
-
-    # 2. Balance + split -> labels {-1, +1}
-    split = prep_data(df, data_cfg)
-    LOGGER.info("  %s train rows | %s test rows | %s features", split.n_train, split.n_test, split.n_features)
+    split = get_data_split(data_cfg)
+    LOGGER.info(
+        "  %s train rows | %s test rows | %s features",
+        split.n_train,
+        split.n_test,
+        split.n_features,
+    )
 
     # 3. Load saved results or train a fresh model
     if load_results:

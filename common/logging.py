@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 
-DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s - %(message)s"
+DEFAULT_FORMAT = "%(asctime)s %(levelname)-4s - %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 

@@ -15,7 +15,7 @@ class DataConfig:
     """Paths and split settings shared by both scripts."""
 
     train_file: Optional[Path] = None
-    test_file: Path = Path("test.csv")
+    test_file: Optional[Path] = None
 
     # Fraction of the balanced dataset held out for evaluation
     test_size: float = 0.2
@@ -26,23 +26,36 @@ class DataConfig:
     # Seed used for sampling and train/test split
     random_state: int = 42
 
+    class_name: str = "Class"
+
     # PCA-transformed columns present in the raw Kaggle dataset
-    v_feature_names: list[str] = field(
-        default_factory=lambda: [f"V{i}" for i in range(1, 29)]
-    )
+    v_feature_names: list[str] = field(default_factory=list)
 
     # Engineered aggregate features added on top of V1-V28
     engineered_feature_names: list[str] = field(
         default_factory=lambda: [
-            "V_Sum", "V_Min", "V_Max", "V_Avg",
-            "V_Std", "V_Pos", "V_Neg", "V_Var",
+            "Comp_Sum",
+            "Comp_Min",
+            "Comp_Max",
+            "Comp_Avg",
+            "Comp_Std",
+            "Comp_Pos",
+            "Comp_Neg",
+            "Comp_Var",
         ]
     )
+
+    additional_feature_names: list[str] = field(default_factory=list)
 
     @property
     def all_feature_names(self) -> list[str]:
         """Full ordered feature list fed into model input arrays."""
-        return self.v_feature_names + self.engineered_feature_names + ["Amount", "Time"]
+        return (
+            self.v_feature_names
+            + self.engineered_feature_names
+            + self.additional_feature_names
+        )
+
 
 """
 common/results.py
@@ -93,12 +106,12 @@ class DataSplit:
 class ClassificationMetrics:
     """Binary classification scores for one data split."""
 
-    split: str                      # "train" or "test"
+    split: str  # "train" or "test"
     precision: float
     recall: float
     f1: float
     accuracy: float
-    confusion_matrix: np.ndarray    # shape (2, 2)
+    confusion_matrix: np.ndarray  # shape (2, 2)
 
     def __str__(self) -> str:
         tag = self.split.capitalize()
@@ -174,7 +187,9 @@ class ModelResults:
                 recall=float(data["train_metrics"]["recall"]),
                 f1=float(data["train_metrics"]["f1"]),
                 accuracy=float(data["train_metrics"]["accuracy"]),
-                confusion_matrix=np.asarray(data["train_metrics"]["confusion_matrix"], dtype=int),
+                confusion_matrix=np.asarray(
+                    data["train_metrics"]["confusion_matrix"], dtype=int
+                ),
             ),
             test_metrics=ClassificationMetrics(
                 split=data["test_metrics"]["split"],
@@ -182,7 +197,9 @@ class ModelResults:
                 recall=float(data["test_metrics"]["recall"]),
                 f1=float(data["test_metrics"]["f1"]),
                 accuracy=float(data["test_metrics"]["accuracy"]),
-                confusion_matrix=np.asarray(data["test_metrics"]["confusion_matrix"], dtype=int),
+                confusion_matrix=np.asarray(
+                    data["test_metrics"]["confusion_matrix"], dtype=int
+                ),
             ),
         )
 
