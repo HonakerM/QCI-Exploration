@@ -1,55 +1,12 @@
-"""
-qciboost_fraud.py
------------------
-Credit card fraud detection using CVQBoost on QCi Dirac-3 quantum hardware.
-
-Loads the Kaggle Playground Series S3E4 dataset, balances it, trains a
-QBoostClassifier on Dirac-3, evaluates it, and plots the ROC curve.
-
-⚠️  QUANTUM EXECUTION WARNING
-This script submits a job to QCi Dirac-3, consuming paid QPU allocation.
-    Cost    : ~1 QPU second per run
-    Pricing : ~$0.22/run (first 600 s free; more available on request)
-
-A --dry-run flag is provided to validate credentials and data without
-submitting to the QPU.
-
-Usage
------
-    python qciboost_fraud.py                        # full QPU run
-    python qciboost_fraud.py --dry-run              # validate only, no QPU
-    python qciboost_fraud.py --save-plots           # save ROC/metric PNGs
-    python qciboost_fraud.py --results-file qciboost_results.json
-    python qciboost_fraud.py --load-results --results-file qciboost_results.json
-    python qciboost_fraud.py --train-file /data/train.csv
-
-Credentials
------------
-Set QCI_TOKEN and QCI_API_URL in your environment or in a .env file:
-    QCI_TOKEN=your_token_here
-    QCI_API_URL=https://api.qci-prod.com
-
-Expected results
-----------------
-    AUC      ~0.882
-    Training ~2–320 seconds (Dirac-3 is a queued, single-request system)
-"""
-
-import os
 import time
-import warnings
 from pathlib import Path
-
-warnings.filterwarnings("ignore")
-
 import numpy as np
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 import typer
-
 from common.binary_classification.data_types import DataConfig, DataSplit, ModelResults
-from common.binary_classification.data_loader import get_data_split, load_data
+from common.binary_classification.data_loader import get_data_split
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
@@ -180,32 +137,12 @@ def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
 
 
 def main(
-    train_file: Path | None = typer.Option(
-        None, "--train-file", help="Optional path to Kaggle train.csv"
-    ),
-    test_file: Path | None = typer.Option(
-        None, help="Path to Kaggle test.csv (default: test.csv)"
-    ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Validate credentials and data prep only; skip QPU submission",
-    ),
-    save_plots: bool = typer.Option(
-        False,
-        "--save-plots",
-        help="Save ROC and metric plots to PNG files instead of showing them",
-    ),
-    results_file: Path = typer.Option(
-        Path("qciboost_results.json"),
-        "--results-file",
-        help="Path to save or load serialized model results",
-    ),
-    load_results: bool = typer.Option(
-        False,
-        "--load-results",
-        help="Load existing results from --results-file instead of retraining",
-    ),
+    train_file: Path | None = None,
+    test_file: Path | None = None,
+    dry_run: bool = False,
+    save_plots: bool = False,
+    results_file: Path = Path("qciboost_results.json"),
+    load_results: bool = False,
     class_override: str | None = None,
     additional_feature_names: list[str] = typer.Option(
         default_factory=lambda: ["Amount", "Time"]

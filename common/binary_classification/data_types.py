@@ -1,13 +1,9 @@
-"""
-common/config.py
-----------------
-Shared configuration dataclasses for the fraud detection scripts.
-Model-specific configs live in their respective scripts.
-"""
-
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+import json
+from typing import Any
+import numpy as np
 
 
 @dataclass
@@ -55,21 +51,6 @@ class DataConfig:
             + self.engineered_feature_names
             + self.additional_feature_names
         )
-
-
-"""
-common/results.py
------------------
-Pure-data dataclasses passed between the data, training, evaluation,
-and visualization layers.  No ML logic lives here.
-"""
-
-import json
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
-
-import numpy as np
 
 
 @dataclass

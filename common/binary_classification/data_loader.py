@@ -14,11 +14,9 @@ from ..logging import get_logger
 
 from collections import Counter
 
-import numpy as np
-import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from .data_types import DataConfig, DataSplit
+from .data_types import DataSplit
 
 
 LOGGER = get_logger(__name__)

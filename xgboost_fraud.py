@@ -1,45 +1,16 @@
-"""
-xgboost_fraud.py
-----------------
-Credit card fraud detection using XGBoost.
-
-Loads the Kaggle Playground Series S3E4 dataset, balances it, trains an
-XGBClassifier, evaluates it, and plots the ROC curve. Runs entirely on
-CPU with no external API calls.
-
-Usage
------
-    python xgboost_fraud.py
-    python xgboost_fraud.py --save-plots
-    python xgboost_fraud.py --results-file xgboost_results.json
-    python xgboost_fraud.py --load-results --results-file xgboost_results.json
-    python xgboost_fraud.py --train-file /data/train.csv --test-file /data/test.csv
-
-Expected results
-----------------
-    AUC      ~0.887
-    Training ~1–2 seconds
-"""
-
 import time
-import warnings
 from pathlib import Path
-
-warnings.filterwarnings("ignore")
-
 import numpy as np
 import typer
 from dataclasses import dataclass
 from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 from xgboost import XGBClassifier
-
 from common.binary_classification.data_types import (
     DataConfig,
-    ClassificationMetrics,
     DataSplit,
     ModelResults,
 )
-from common.binary_classification.data_loader import get_data_split, load_data
+from common.binary_classification.data_loader import get_data_split
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
@@ -178,27 +149,11 @@ def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
 
 
 def main(
-    train_file: Path | None = typer.Option(
-        None, help="Optional path to Kaggle train.csv"
-    ),
-    test_file: Path | None = typer.Option(
-        None, help="Path to Kaggle test.csv (default: test.csv)"
-    ),
-    save_plots: bool = typer.Option(
-        False,
-        "--save-plots",
-        help="Save ROC and metric plots to PNG files instead of showing them",
-    ),
-    results_file: Path = typer.Option(
-        Path("xgboost_results.json"),
-        "--results-file",
-        help="Path to save or load serialized model results",
-    ),
-    load_results: bool = typer.Option(
-        False,
-        "--load-results",
-        help="Load existing results from --results-file instead of retraining",
-    ),
+    train_file: Path | None = None,
+    test_file: Path | None = None,
+    save_plots: bool = False,
+    results_file: Path = Path("xgboost_results.json"),
+    load_results: bool = False,
     class_override: str | None = None,
     additional_feature_names: list[str] = typer.Option(
         default_factory=lambda: ["Amount", "Time"]
