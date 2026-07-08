@@ -38,7 +38,7 @@ def plot_roc_curves(
     ax.set_title(
         "ROC Curves: "
         + " vs ".join(r.model_name for r in results)
-        + "\nCredit Card Fraud Detection",
+        + "\n Fraud Detection",
         fontsize=14,
         fontweight="bold",
     )
