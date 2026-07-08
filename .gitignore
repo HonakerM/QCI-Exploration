@@ -220,5 +220,5 @@ __marimo__/
 
 # Data
 data/
-*.png
+/*.png
 /*.json
