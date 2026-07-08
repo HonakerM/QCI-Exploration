@@ -1,17 +1,20 @@
+"""Standard logging setup shared across the fraud training scripts."""
+
 import logging
 from pathlib import Path
-from typing import Optional
 
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-4s - %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
-def setup_logging(level: int = logging.INFO, log_file: Optional[Path] = None) -> None:
-    """Configure root logging with a standard formatter.
+def setup_logging(level: int = logging.INFO, log_file: Path | None = None) -> None:
+    """Configures root logging with a standard formatter.
 
-    - `level` sets the root logger level (default: `logging.INFO`).
-    - if `log_file` is provided a `FileHandler` is added in addition to stdout.
+    Args:
+        level (int): The root logger level.
+        log_file (Path | None): If provided, a FileHandler writing to this path is added
+            in addition to the stdout handler.
     """
     handlers: list[logging.Handler] = [logging.StreamHandler()]
     if log_file:
@@ -34,5 +37,12 @@ def setup_logging(level: int = logging.INFO, log_file: Optional[Path] = None) ->
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Return a logger with the given name (convenience wrapper)."""
+    """Returns a logger with the given name.
+
+    Args:
+        name (str): The logger name, typically __name__ of the calling module.
+
+    Returns:
+        logging.Logger: The logging.Logger instance for that name.
+    """
     return logging.getLogger(name)

@@ -1,3 +1,5 @@
+"""Trains and evaluates an XGBoost classifier for fraud detection."""
+
 import time
 from pathlib import Path
 import numpy as np
@@ -29,7 +31,24 @@ LOGGER = get_logger(__name__)
 
 @dataclass
 class XGBoostConfig:
-    """Hyperparameters for the XGBoost classifier."""
+    """Hyperparameters for the XGBoost classifier.
+
+    Attributes:
+        n_estimators: Number of boosting rounds.
+        min_child_weight: Minimum sum of instance weight needed in a child.
+        max_depth: Maximum tree depth.
+        learning_rate: Boosting learning rate (eta).
+        subsample: Fraction of rows sampled per tree.
+        colsample_bytree: Fraction of columns sampled per tree.
+        reg_lambda: L2 regularization term on weights.
+        reg_alpha: L1 regularization term on weights.
+        gamma: Minimum loss reduction required to make a further split.
+        max_bin: Maximum number of bins used for histogram-based splits.
+        random_state: Seed used for reproducibility.
+        objective: XGBoost learning objective.
+        tree_method: XGBoost tree construction algorithm.
+        eval_metric: Metric used for evaluation during training.
+    """
 
     n_estimators: int = 3093
     min_child_weight: int = 96
@@ -47,6 +66,11 @@ class XGBoostConfig:
     eval_metric: str = "auc"
 
     def as_dict(self) -> dict:
+        """Converts the config into keyword arguments for XGBClassifier.
+
+        Returns:
+            A dictionary of hyperparameters suitable for XGBClassifier(**kwargs).
+        """
         return {
             "n_estimators": self.n_estimators,
             "min_child_weight": self.min_child_weight,
@@ -71,11 +95,16 @@ class XGBoostConfig:
 
 
 def remap_labels(split: DataSplit) -> DataSplit:
-    """
-    Return a copy of *split* with labels re-scaled from {-1, +1} → {0, 1}.
+    """Returns a copy of split with labels re-scaled from {-1, +1} to {0, 1}.
 
     XGBoost's 'binary:logistic' objective requires non-negative labels.
     Applies: label = 0.5 * (label + 1). The original DataSplit is unchanged.
+
+    Args:
+        split: The data split whose labels should be remapped.
+
+    Returns:
+        A new DataSplit with y_train and y_test remapped to {0, 1}.
     """
     remap = np.vectorize(lambda v: 0.5 * (v + 1))
     return DataSplit(
@@ -100,7 +129,15 @@ _POS_LABEL = 1
 
 
 def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
-    """Fit XGBClassifier and return fully-populated ModelResults."""
+    """Fits XGBClassifier and returns fully-populated ModelResults.
+
+    Args:
+        split: Training and test data with labels in {0, 1}.
+        cfg: Hyperparameters for the XGBoost classifier.
+
+    Returns:
+        ModelResults: The trained model's metrics, ROC curve data, and timing.
+    """
     model = XGBClassifier(**cfg.as_dict(), enable_categorical=True)
     LOGGER.info("Training %s...", _MODEL_NAME)
     t0 = time.time()
@@ -159,8 +196,24 @@ def main(
         default_factory=lambda: ["Amount", "Time"]
     ),
     no_additional_features: bool = False,
-) -> None:
-    """Run XGBoost fraud training and evaluation."""
+):
+    """Runs XGBoost fraud training and evaluation.
+
+    Args:
+        train_file (Path | None): Path to the training CSV file, if any.
+        test_file (Path | None): Path to the test CSV file, if any.
+        save_plots (bool): If True, save ROC and metric plots as PNGs instead of
+            showing them.
+        results_file (Path): Path to save (or load) the ModelResults JSON.
+        load_results (bool): If True, load previously saved results instead of
+            training a new model.
+        class_override (str): If provided, overrides the default label column
+            name.
+        additional_feature_names (list[str]): Extra raw feature columns to include
+            alongside the engineered features.
+        no_additional_features (bool): If True, ignore additional_feature_names
+            and train on engineered features only.
+    """
     setup_logging()
 
     data_cfg = DataConfig(

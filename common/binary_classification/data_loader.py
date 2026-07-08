@@ -1,9 +1,4 @@
-"""
-common/data_loader.py
----------------------
-Loads the raw Kaggle CSVs, combines them, and engineers the eight
-aggregate V_* features.  Returns a single analysis-ready DataFrame.
-"""
+"""Loads raw fraud-detection CSVs, combines them, and engineers features."""
 
 from pathlib import Path
 
@@ -23,19 +18,30 @@ LOGGER = get_logger(__name__)
 
 
 def get_data_split(cfg: DataConfig) -> DataSplit:
+    """Loads and prepares data in one step.
+
+    Args:
+        cfg (DataConfig): Data configuration describing which files to load and how to
+            split them.
+
+    Returns:
+        DataSplit: The train/test feature and label arrays.
+    """
     df = load_data(cfg)
     return prep_data(df, cfg)
 
 
 def load_data(cfg: DataConfig) -> pd.DataFrame:
-    """
-    Load one or more CSV files, optionally concatenate them,
-    engineer V_* features, and return the combined DataFrame.
+    """Loads one or more CSV files, optionally concatenates them,
+    engineers V_* features, and returns the combined DataFrame.
 
-    Raises
-    ------
-    FileNotFoundError
-        If any selected CSV is missing — includes the Kaggle download URL.
+    Args:
+        cfg (DataConfig): Data configuration specifying the train/test file paths and
+            column names. Its v_feature_names field is populated with the
+            discovered V-prefixed columns as a side effect.
+
+    Returns:
+        pd.DataFrame: The combined, feature-engineered DataFrame.
     """
     selected_paths: list[Path] = []
     if cfg.train_file is not None:
@@ -84,16 +90,22 @@ def load_data(cfg: DataConfig) -> pd.DataFrame:
 
 
 def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
-    """
-    Balance, label-encode {-1, +1}, and split into train/test arrays.
+    """Balances, label-encodes {-1, +1}, and splits into train/test arrays.
 
-    Steps
-    -----
-    1. Undersample non-fraud rows to ``cfg.non_fraud_sample_size``.
-    2. Concatenate with all fraud rows, then shuffle.
-    3. Map Class column: 0 → -1, 1 → +1.
-    4. Build feature matrix from ``cfg.all_feature_names``.
-    5. Stratified train/test split.
+    Steps:
+        1. Undersample non-fraud rows to cfg.non_fraud_sample_size.
+        2. Concatenate with all fraud rows, then shuffle.
+        3. Map the class column: 0 -> -1, 1 -> +1.
+        4. Build the feature matrix from cfg.all_feature_names.
+        5. Perform a stratified train/test split.
+
+    Args:
+        df (pd.DataFrame): Feature-engineered DataFrame, as returned by load_data().
+        cfg (DataConfig): Data configuration describing the class column, sample size,
+            test size, and feature columns to use.
+
+    Returns:
+        DataSplit: The resulting train/test feature and label arrays.
     """
     df_non_fraud = df[df[cfg.class_name] == 0].sample(
         cfg.non_fraud_sample_size, random_state=cfg.random_state
@@ -128,7 +140,16 @@ def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
 
 
 def _engineer_v_features(df: pd.DataFrame, v_cols: list[str]) -> pd.DataFrame:
-    """Add the eight row-wise aggregate features derived from V1-V28."""
+    """Adds the eight row-wise aggregate features derived from the V columns.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the V-prefixed input columns.
+        v_cols (list[str]): Names of the V-prefixed columns to aggregate over.
+
+    Returns:
+        pd.DataFrame: The DataFrame with Comp_* aggregate columns added (or unchanged if
+        they are already present).
+    """
     if "Comp_Sum" in df.columns:
         LOGGER.info("  Comp_* features already present, skipping engineering")
         return df
@@ -155,9 +176,8 @@ def _encode_categorical_to_v_fields(
     smoothing: float = 10,
     ignored_fields: list[str] | None = None,
 ) -> pd.DataFrame:
-    """
-    Convert categorical columns into numerical values in [0, 1] using
-    smoothed target (mean) encoding against `class_col`, for use with
+    """Converts categorical columns into numerical values in [0, 1] using
+    smoothed target (mean) encoding against class_col, for use with
     XGBoost.
 
     Each category is replaced by a smoothed average of the class label
@@ -171,6 +191,18 @@ def _encode_categorical_to_v_fields(
     Note: this fits the encoding on the full dataframe passed in, so if
     you have a separate test set, encode using stats from train only to
     avoid leakage.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the categorical columns to encode.
+        class_col (str): Name of the target/label column used to compute the
+            smoothed means.
+        smoothing (float): Smoothing strength; higher values pull rare categories'
+            encoded values closer to the global mean.
+        ignored_fields (list[str] | None): Column names to exclude from encoding and renaming.
+
+    Returns:
+        pd.DataFrame: A copy of the DataFrame with categorical columns target-encoded
+        and non-V feature columns renamed with a "V_" prefix.
     """
     # Setup ignored fields if not already
     if ignored_fields is None:
@@ -225,6 +257,16 @@ FALSE_VALUES = {"no", "false", "0", "n", "f"}
 
 
 def _encode_class_name_to_val(df: pd.DataFrame, class_col: str) -> pd.DataFrame:
+    """Encodes a boolean-like class column into numeric 0/1 values.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the class column.
+        class_col (str): Name of the class column to encode.
+
+    Returns:
+        pd.DataFrame: The DataFrame with class_col encoded as 0/1 if it contained
+        recognized boolean-like values, otherwise unchanged.
+    """
     # Skip numeric columns
     if pd.api.types.is_numeric_dtype(df[class_col]):
         return df
