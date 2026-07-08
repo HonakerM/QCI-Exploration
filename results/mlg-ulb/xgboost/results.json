@@ -1,6 +1,6 @@
 {
   "model_name": "XGBoost",
-  "training_time_seconds": 0.806647777557373,
+  "training_time_seconds": 0.6994197368621826,
   "fpr": [
     0.0,
     0.0,

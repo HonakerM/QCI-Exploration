@@ -42,6 +42,7 @@ class DataConfig:
     )
 
     additional_feature_names: list[str] = field(default_factory=list)
+    index_column: str = "id"
 
     @property
     def all_feature_names(self) -> list[str]:

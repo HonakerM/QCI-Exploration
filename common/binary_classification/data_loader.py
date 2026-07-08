@@ -70,7 +70,11 @@ def load_data(cfg: DataConfig) -> pd.DataFrame:
         LOGGER.info("  Combined  : %s rows", f"{len(df):,}")
 
     df = _encode_class_name_to_val(df, cfg.class_name)
-    df = _encode_categorical_to_v_fields(df, cfg.class_name)
+    df = _encode_categorical_to_v_fields(
+        df,
+        cfg.class_name,
+        ignored_fields=cfg.additional_feature_names + [cfg.index_column],
+    )
 
     cfg.v_feature_names = [str(col) for col in df if col.startswith("V")]
 
@@ -146,7 +150,10 @@ def _engineer_v_features(df: pd.DataFrame, v_cols: list[str]) -> pd.DataFrame:
 
 
 def _encode_categorical_to_v_fields(
-    df: pd.DataFrame, class_col: str, smoothing: float = 10
+    df: pd.DataFrame,
+    class_col: str,
+    smoothing: float = 10,
+    ignored_fields: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Convert categorical columns into numerical values in [0, 1] using
@@ -165,6 +172,10 @@ def _encode_categorical_to_v_fields(
     you have a separate test set, encode using stats from train only to
     avoid leakage.
     """
+    # Setup ignored fields if not already
+    if ignored_fields is None:
+        ignored_fields = []
+
     df = df.copy()
     global_mean = df[class_col].mean()
 
@@ -177,6 +188,7 @@ def _encode_categorical_to_v_fields(
             or isinstance(df[col].dtype, pd.CategoricalDtype)
             or df[col].dtype == "bool"
         )
+        and (col not in ignored_fields)
     ]
 
     for col in cat_cols:
@@ -201,7 +213,7 @@ def _encode_categorical_to_v_fields(
     feature_cols = [c for c in df.columns if c != class_col]
     rename_map = {}
     for col in feature_cols:
-        if not col.startswith("V"):
+        if not col.startswith("V") and col not in ignored_fields:
             rename_map[col] = f"V_{col}"
     df = df.rename(columns=rename_map)
 
