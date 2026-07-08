@@ -72,7 +72,8 @@ python3 xgboost_fraud.py --train-file "./data/mlg-ulb/train.csv" --test-file "./
 
 ### QBoost on QCi Dirac-3
 
-> ⚠️ Each `qciboost_fraud.py` run that actually submits to Dirac-3 consumes
+> [!WARNING]
+> Each `qciboost_fraud.py` run that actually submits to Dirac-3 consumes
 > paid QPU allocation (~1 QPU second, ~$0.22/run at time of writing). Use
 > `--dry-run` to validate your data pipeline first without submitting a job.
 
