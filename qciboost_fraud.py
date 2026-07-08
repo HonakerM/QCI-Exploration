@@ -1,3 +1,5 @@
+"""Trains and evaluates a QBoostClassifier on QCi Dirac-3 for fraud detection."""
+
 import time
 from pathlib import Path
 import numpy as np
@@ -14,6 +16,12 @@ from common.binary_classification.visualization import (
 )
 from common.logging import get_logger, setup_logging
 
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+_MODEL_NAME = "CVQBoost"
+_LABELS = [-1, 1]  # QBoostClassifier requires {-1, +1}
+_POS_LABEL = 1
 LOGGER = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -23,20 +31,30 @@ LOGGER = get_logger(__name__)
 
 @dataclass
 class CVQBoostConfig:
-    """
-    Hyperparameters for the QBoostClassifier running on QCi Dirac-3.
+    """Hyperparameters for the QBoostClassifier running on QCi Dirac-3.
 
-    ⚠️  Each run consumes paid QPU allocation (~1 QPU second, ~$0.22/run).
+    Attributes:
+        relaxation_schedule (int): Relaxation schedule index used by the Dirac-3
+            solver.
+        num_samples (int): Number of samples requested from the solver.
+        lambda_coef (float): Regularization coefficient applied during training.
+        weak_cls_strategy (str): Strategy used to fit weak classifiers;
+            'sequential' is required on Windows (single-threaded weak
+            classifiers).
     """
 
     relaxation_schedule: int = 1
     num_samples: int = 1
     lambda_coef: float = 0.0
 
-    # 'sequential' is required on Windows (single-threaded weak classifiers)
     weak_cls_strategy: str = "sequential"
 
     def to_qboost_config(self) -> dict:
+        """Converts the config into keyword arguments for QBoostClassifier.
+
+        Returns:
+            dict: A dictionary of hyperparameters suitable for QBoostClassifier(**kwargs).
+        """
         return {
             "relaxation_schedule": self.relaxation_schedule,
             "num_samples": self.num_samples,
@@ -50,25 +68,15 @@ class CVQBoostConfig:
 # ---------------------------------------------------------------------------
 
 
-def validate_labels(split: DataSplit) -> None:
-    """
-    Assert that labels are exactly {-1, +1} as QBoostClassifier requires.
+def validate_labels(split: DataSplit):
+    """Asserts that labels are exactly {-1, +1} as QBoostClassifier requires.
 
-    Raises
-    ------
-    AssertionError if any unexpected values are found.
+    Args:
+        split (DataSplit): The data split whose test labels should be validated.
     """
     bad = split.y_test[~np.isin(split.y_test, [-1, 1])]
     if len(bad):
         raise AssertionError(f"QBoost requires labels in {{-1, 1}}.  Found: {bad}")
-
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-_MODEL_NAME = "CVQBoost"
-_LABELS = [-1, 1]  # QBoostClassifier requires {-1, +1}
-_POS_LABEL = 1
 
 
 # ---------------------------------------------------------------------------
@@ -77,11 +85,17 @@ _POS_LABEL = 1
 
 
 def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
-    """
-    Fit QBoostClassifier on Dirac-3 and return fully-populated ModelResults.
+    """Fits QBoostClassifier on Dirac-3 and returns fully-populated ModelResults.
 
-    Labels in *split* must be {-1, +1} - call validate_labels()
-    before this function if you are unsure.
+    Labels in split must be {-1, +1} - call validate_labels() before this
+    function if you are unsure.
+
+    Args:
+        split (DataSplit): Training and test data with labels in {-1, +1}.
+        cfg (CVQBoostConfig): Hyperparameters for the QBoostClassifier.
+
+    Returns:
+        ModelResults: The trained model's metrics, ROC curve data, and timing.
     """
     # Import here so the rest of the script loads without quantum libs installed
     from eqc_models.ml import QBoostClassifier
@@ -148,7 +162,26 @@ def main(
         default_factory=lambda: ["Amount", "Time"]
     ),
     no_additional_features: bool = False,
-) -> None:
+):
+    """Runs QCi Dirac-3 QBoost fraud training and evaluation.
+
+    Args:
+        train_file (Path | None): Path to the training CSV file, if any.
+        test_file (Path | None): Path to the test CSV file, if any.
+        dry_run (bool): If True, load and validate data without submitting a job
+            to Dirac-3.
+        save_plots (bool): If True, save ROC and metric plots as PNGs instead of
+            showing them.
+        results_file (Path): Path to save (or load) the ModelResults JSON.
+        load_results (bool): If True, load previously saved results instead of
+            training a new model.
+        class_override (str): If provided, overrides the default label column
+            name.
+        additional_feature_names (list[str]): Extra raw feature columns to include
+            alongside the engineered features.
+        no_additional_features (bool): If True, ignore additional_feature_names
+            and train on engineered features only.
+    """
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
 
@@ -205,6 +238,14 @@ def main(
         return
 
     # 4. Train on Dirac-3
+    LOGGER.error("CONTINUING WILL CAUSE CHARGES TO QCI ACCOUNT!!!!")
+    LOGGER.error("TYPE `start` AND PRESS <enter> TO CONTINUE")
+    LOGGER.error("ANY OTHER INPUT OR <ctrl>+c WILL EXIT")
+    required_input = input()
+    if required_input.lower() != "start":
+        LOGGER.error("EXITING")
+        return
+
     results = train(split, cvq_cfg)
     results.save(results_file)
     LOGGER.info("Saved results to %s", results_file)

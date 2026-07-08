@@ -1,3 +1,5 @@
+"""CLI for comparing saved model results with ROC and metric plots."""
+
 from pathlib import Path
 import typer
 from common.binary_classification.data_types import ModelResults
@@ -17,7 +19,12 @@ def main(
     ),
     save_plots: bool = typer.Option(False, help="Save PNGs instead of showing"),
 ):
-    """Load results JSONs and plot ROC curves + metric comparison."""
+    """Loads results JSONs and plots ROC curves and a metric comparison.
+
+    Args:
+        results_files (list[Path]): Paths to saved ModelResults JSON files.
+        save_plots (bool): If True, save the plots as PNGs instead of showing them.
+    """
     results = [ModelResults.load(f) for f in results_files]
 
     for r in results:

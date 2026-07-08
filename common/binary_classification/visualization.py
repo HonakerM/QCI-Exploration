@@ -1,13 +1,4 @@
-"""
-common/visualization.py
------------------------
-Plotting helpers consumed by both fraud scripts.
-
-Functions
----------
-plot_roc_curves        — overlaid ROC curves, one line per model
-plot_metric_comparison — side-by-side AUC and Log Loss bar charts
-"""
+"""Plotting helpers consumed by both fraud scripts."""
 
 from pathlib import Path
 
@@ -22,14 +13,13 @@ _COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
 def plot_roc_curves(
     results: list[ModelResults],
     save_path: Path | None = None,
-) -> None:
-    """
-    Plot overlaid ROC curves for every ModelResults in *results*.
+):
+    """Plots overlaid ROC curves for every ModelResults in results.
 
-    Parameters
-    ----------
-    results   : one ModelResults per model
-    save_path : write PNG here instead of calling plt.show() if provided
+    Args:
+        results (list[ModelResults]): One ModelResults per model.
+        save_path (Path | None): If provided, write the plot as a PNG here instead of
+            calling plt.show().
     """
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -64,13 +54,14 @@ def plot_metric_comparison(
     results: list[ModelResults],
     save_path: Path | None = None,
 ) -> None:
-    """
-    Side-by-side bar charts: AUC (higher is better) and Log Loss (lower is better).
+    """Plots side-by-side bar charts of AUC and log loss.
 
-    Parameters
-    ----------
-    results   : one ModelResults per model
-    save_path : write PNG here instead of calling plt.show() if provided
+    AUC is higher-is-better and log loss is lower-is-better.
+
+    Args:
+        results (list[ModelResults]): One ModelResults per model.
+        save_path (Path | None): If provided, write the plot as a PNG here instead of
+            calling plt.show().
     """
     names = [r.model_name for r in results]
     aucs = [r.auc for r in results]
@@ -120,6 +111,19 @@ def _bar_chart(
     ylim: tuple | None,
     label_offset: float,
 ) -> None:
+    """Draws a single labeled bar chart onto the given axes.
+
+    Args:
+        ax (plt.Axes): Matplotlib axes to draw onto.
+        names (list[str]): Bar labels, one per model.
+        values (list[float]): Bar heights, one per model.
+        colors (list[str]): Bar colors, one per model.
+        ylabel (str): Y-axis label.
+        title (str): Chart title.
+        ylim (tuple | None): Optional (min, max) y-axis limits.
+        label_offset (float): Vertical offset used to place the value label above
+            each bar.
+    """
     bars = ax.bar(
         names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5
     )
@@ -141,6 +145,16 @@ def _bar_chart(
 
 
 def _save_or_show(fig: plt.Figure, save_path: Path | None) -> None:
+    """Saves the figure to disk, or shows it interactively.
+
+    Args:
+        fig (plt.Figure): The figure to save or display.
+        save_path (Path | None): If provided, save the figure here as a PNG; otherwise
+            call plt.show().
+
+    Returns:
+        None.
+    """
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
         print(f"  Figure saved → {save_path}")
