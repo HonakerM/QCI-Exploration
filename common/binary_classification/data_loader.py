@@ -10,6 +10,7 @@ from ..logging import get_logger
 from collections import Counter
 
 from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
 
 from .data_types import DataSplit
 
@@ -130,6 +131,13 @@ def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
         f"  Train: shape={X_train.shape}, label counts={dict(Counter(y_train))}"
     )
     LOGGER.info(f"  Test: shape={X_test.shape}, label counts={dict(Counter(y_test))}")
+
+    if cfg.should_over_sample:
+        smote = SMOTE()
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+        LOGGER.info(
+            f"  Oversample Train: shape={X_train.shape}, label counts={dict(Counter(y_train))}"
+        )
 
     return DataSplit(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
 

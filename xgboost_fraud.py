@@ -128,7 +128,7 @@ _POS_LABEL = 1
 # ---------------------------------------------------------------------------
 
 
-def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
+def train(split: DataSplit, cfg: XGBoostConfig, data_cfg: DataConfig) -> ModelResults:
     """Fits XGBClassifier and returns fully-populated ModelResults.
 
     Args:
@@ -168,8 +168,11 @@ def train(split: DataSplit, cfg: XGBoostConfig) -> ModelResults:
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
 
+    name = _MODEL_NAME
+    if data_cfg.should_over_sample:
+        name = f"{_MODEL_NAME} (Oversampled)"
     return ModelResults(
-        model_name=_MODEL_NAME,
+        model_name=name,
         training_time_seconds=elapsed,
         fpr=fpr,
         tpr=tpr,
@@ -196,6 +199,7 @@ def main(
         default_factory=lambda: ["Amount", "Time"]
     ),
     no_additional_features: bool = False,
+    should_over_sample: bool = False,
 ):
     """Runs XGBoost fraud training and evaluation.
 
@@ -220,6 +224,7 @@ def main(
         train_file=Path(train_file) if train_file is not None else None,
         test_file=Path(test_file) if test_file is not None else None,
         additional_feature_names=additional_feature_names,
+        should_over_sample=should_over_sample,
     )
     if no_additional_features:
         data_cfg.additional_feature_names = []
@@ -248,7 +253,7 @@ def main(
         results = ModelResults.load(results_file)
     else:
         xgb_split = remap_labels(split)
-        results = train(xgb_split, xgb_cfg)
+        results = train(xgb_split, xgb_cfg, data_cfg)
         results.save(results_file)
         LOGGER.info("Saved results to %s", results_file)
 

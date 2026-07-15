@@ -6,6 +6,8 @@ python-dotenv>=1
 qci-client>=5
 # QCI models and base config
 eqc_models>=0.15
+# SMOTE and oversampling
+imblearn>=0.14
 # visualization
 matplotlib>=3
 # formatting (optional)

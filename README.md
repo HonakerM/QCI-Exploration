@@ -36,12 +36,20 @@ QCI-Exploration/
    account. Create a `.env` file in the project root with your credentials or
    set and environmental variables.
 
-   ```
+   ```env
    QCI_TOKEN=your-api-token
    QCI_API_URL=https://api.qci-prod.com
    ```
 
    `qciboost_fraud.py` loads this automatically at startup.
+
+4. You can test your QCI connection by running the `qci_status.py` script:
+
+  ```bash
+  $ python3 .\qci_status.py
+  2026-07-15 16:31:44 INFO - csample: No Access
+  2026-07-15 16:31:44 INFO - dirac: Trail with 594 remaining 
+  ```
 
 ## Preparing your data
 
