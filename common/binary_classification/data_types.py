@@ -31,6 +31,7 @@ class DataConfig:
     train_file: Optional[Path] = None
     test_file: Optional[Path] = None
 
+    should_over_sample: bool = False
     test_size: float = 0.2
 
     non_fraud_sample_size: int = 1000

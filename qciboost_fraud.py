@@ -15,6 +15,7 @@ from common.binary_classification.visualization import (
     plot_roc_curves,
 )
 from common.logging import get_logger, setup_logging
+from common.qci import get_time_remaining
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -48,6 +49,7 @@ class CVQBoostConfig:
     lambda_coef: float = 0.0
 
     weak_cls_strategy: str = "sequential"
+    weak_cls_type: str = "knn"
 
     def to_qboost_config(self) -> dict:
         """Converts the config into keyword arguments for QBoostClassifier.
@@ -84,7 +86,7 @@ def validate_labels(split: DataSplit):
 # ---------------------------------------------------------------------------
 
 
-def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
+def train(split: DataSplit, cfg: CVQBoostConfig, data_cfg: DataConfig) -> ModelResults:
     """Fits QBoostClassifier on Dirac-3 and returns fully-populated ModelResults.
 
     Labels in split must be {-1, +1} - call validate_labels() before this
@@ -134,7 +136,7 @@ def train(split: DataSplit, cfg: CVQBoostConfig) -> ModelResults:
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
 
     return ModelResults(
-        model_name=_MODEL_NAME,
+        model_name=f"{_MODEL_NAME} ({cfg.weak_cls_type} {'Oversampled' if data_cfg.should_over_sample else ''})",
         training_time_seconds=elapsed,
         fpr=fpr,
         tpr=tpr,
@@ -162,6 +164,8 @@ def main(
         default_factory=lambda: ["Amount", "Time"]
     ),
     no_additional_features: bool = False,
+    weak_cls_type: str | None = None,
+    should_over_sample: bool = False,
 ):
     """Runs QCi Dirac-3 QBoost fraud training and evaluation.
 
@@ -181,6 +185,7 @@ def main(
             alongside the engineered features.
         no_additional_features (bool): If True, ignore additional_feature_names
             and train on engineered features only.
+        should_over_sample (bool): If we should oversample the training data
     """
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
@@ -189,6 +194,7 @@ def main(
         train_file=Path(train_file) if train_file is not None else None,
         test_file=Path(test_file) if test_file is not None else None,
         additional_feature_names=additional_feature_names,
+        should_over_sample=should_over_sample,
     )
     if no_additional_features:
         data_cfg.additional_feature_names = []
@@ -197,6 +203,8 @@ def main(
         data_cfg.class_name = class_override
 
     cvq_cfg = CVQBoostConfig()
+    if weak_cls_type:
+        cvq_cfg.weak_cls_type = weak_cls_type
 
     overall_start = time.time()
     LOGGER.info("qciboost_fraud start")
@@ -238,7 +246,9 @@ def main(
         return
 
     # 4. Train on Dirac-3
-    LOGGER.error("CONTINUING WILL CAUSE CHARGES TO QCI ACCOUNT!!!!")
+    LOGGER.error(
+        f"CONTINUING WILL CAUSE CHARGES TO QCI ACCOUNT! YOU HAVE {get_time_remaining()}s REMAINING"
+    )
     LOGGER.error("TYPE `start` AND PRESS <enter> TO CONTINUE")
     LOGGER.error("ANY OTHER INPUT OR <ctrl>+c WILL EXIT")
     required_input = input()
@@ -246,7 +256,7 @@ def main(
         LOGGER.error("EXITING")
         return
 
-    results = train(split, cvq_cfg)
+    results = train(split, cvq_cfg, data_cfg)
     results.save(results_file)
     LOGGER.info("Saved results to %s", results_file)
     print_results(results)

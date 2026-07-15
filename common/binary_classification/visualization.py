@@ -1,13 +1,18 @@
 """Plotting helpers consumed by both fraud scripts."""
 
 from pathlib import Path
+import re
 
+from matplotlib import colormaps
 import matplotlib.pyplot as plt
 
 from .data_types import ModelResults
 
-# Colour cycle that works well for 2–4 models
-_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
+
+def _get_colors(n: int) -> list:
+    """Returns n visually distinct colors."""
+    cmap = colormaps["tab20"] if n <= 20 else colormaps["hsv"]
+    return [cmap(i / max(n - 1, 1)) for i in range(n)]
 
 
 def plot_roc_curves(
@@ -23,7 +28,7 @@ def plot_roc_curves(
     """
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    for r, color in zip(results, _COLORS):
+    for r, color in zip(results, _get_colors(len(results))):
         ax.plot(
             r.fpr,
             r.tpr,
@@ -66,7 +71,7 @@ def plot_metric_comparison(
     names = [r.model_name for r in results]
     aucs = [r.auc for r in results]
     losses = [r.log_loss for r in results]
-    colors = _COLORS[: len(results)]
+    colors = _get_colors(len(results))
 
     fig, (ax_auc, ax_loss) = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -101,6 +106,40 @@ def plot_metric_comparison(
 # ---------------------------------------------------------------------------
 
 
+def _wrap_label(label: str, width: int) -> str:
+    """Wrap a label into whole words on newlines
+
+    Args:
+        label (str): the label to split
+        width (int): the max width of each line
+
+    Returns:
+        str: the new string
+    """
+    # Tokens are:
+    #   - parenthesized groups: "(GPU)"
+    #   - slash
+    #   - non-whitespace sequences
+    tokens = re.findall(r"\([^)]*\)|/|[^\s/]+", label)
+
+    lines = []
+    current = ""
+
+    for token in tokens:
+        if not current:
+            current = token
+        elif len(current) + 1 + len(token) <= width:
+            current += " " + token
+        else:
+            lines.append(current)
+            current = token
+
+    if current:
+        lines.append(current)
+
+    return "\n".join(lines)
+
+
 def _bar_chart(
     ax: plt.Axes,
     names: list[str],
@@ -124,9 +163,19 @@ def _bar_chart(
         label_offset (float): Vertical offset used to place the value label above
             each bar.
     """
-    bars = ax.bar(
-        names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5
+    smallest_word_size = max(
+        len(word) for name in names for word in re.split(r"[ ()/\\]", name)
     )
+    names = [_wrap_label(name, smallest_word_size) for name in names]
+    spacing = 2
+    scaled_names = [i * spacing for i in range(len(names))]
+
+    bars = ax.bar(
+        scaled_names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5
+    )
+
+    ax.set_xticks(scaled_names)
+    ax.set_xticklabels(names)
     ax.set_ylabel(ylabel, fontsize=12)
     ax.set_title(title, fontsize=14, fontweight="bold")
     if ylim:

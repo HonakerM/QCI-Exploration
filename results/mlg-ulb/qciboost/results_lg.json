@@ -1,5 +1,5 @@
 {
-  "model_name": "CVQBoost",
+  "model_name": "CVQBoost (lg)",
   "training_time_seconds": 7.9487268924713135,
   "fpr": [
     0.0,
