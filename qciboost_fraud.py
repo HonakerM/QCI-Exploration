@@ -2,6 +2,7 @@
 
 import time
 from pathlib import Path
+import joblib
 import numpy as np
 from dataclasses import dataclass
 from dotenv import load_dotenv
@@ -43,6 +44,7 @@ class CVQBoostConfig:
             'sequential' is required on Windows (single-threaded weak
             classifiers).
     """
+
     relaxation_schedule: int = 2
     num_samples: int = 1
     lambda_coef: float = 0.0
@@ -50,8 +52,7 @@ class CVQBoostConfig:
     weak_cls_strategy: str = "sequential"
     weak_cls_type: str = "knn"
     weak_cls_schedule: int = 1
-    include_smu_params: bool =True
-
+    include_smu_params: bool = True
 
     def to_qboost_config(self) -> dict:
         """Converts the config into keyword arguments for QBoostClassifier.
@@ -62,22 +63,30 @@ class CVQBoostConfig:
         weak_cls_params = {}
         if self.include_smu_params:
             if self.weak_cls_type == "knn":
-                weak_cls_params = {"weights":"uniform", "n_neighbors":15,"metric":"minkowski"}
+                weak_cls_params = {
+                    "weights": "uniform",
+                    "n_neighbors": 15,
+                    "metric": "minkowski",
+                }
             elif self.weak_cls_type == "lda":
-                weak_cls_params = {"solver":"lsqr", "shrinkage":"auto"}
+                weak_cls_params = {"solver": "lsqr", "shrinkage": "auto"}
             elif self.weak_cls_type == "lg":
-                weak_cls_params = {"penalty":"l2", "solver":"lbfgs", "C":10,}
+                weak_cls_params = {
+                    "penalty": "l2",
+                    "solver": "lbfgs",
+                    "C": 10,
+                }
             elif self.weak_cls_type == "xgb":
                 weak_cls_params = {
-    'n_estimators': 100,
-    'max_depth': 3,
-    'learning_rate': 0.1,
-    'subsample': 1.0,
-    'colsample_bytree': 0.8,
-    'min_child_weight': 1,
-    'reg_lambda': 1.0,
-    'reg_alpha': 0.0
-}
+                    "n_estimators": 100,
+                    "max_depth": 3,
+                    "learning_rate": 0.1,
+                    "subsample": 1.0,
+                    "colsample_bytree": 0.8,
+                    "min_child_weight": 1,
+                    "reg_lambda": 1.0,
+                    "reg_alpha": 0.0,
+                }
         return {
             "relaxation_schedule": self.relaxation_schedule,
             "num_samples": self.num_samples,
@@ -103,6 +112,24 @@ def validate_labels(split: DataSplit):
     bad = split.y_test[~np.isin(split.y_test, [-1, 1])]
     if len(bad):
         raise AssertionError(f"QBoost requires labels in {{-1, 1}}.  Found: {bad}")
+
+
+# ---------------------------------------------------------------------------
+# Saving
+# ---------------------------------------------------------------------------
+
+
+def _save_model(model: "QBoostClassifier", cfg: CVQBoostConfig, path: Path) -> None:  # noqa
+    bundle = {
+        "h_list": model.h_list,
+        "ind_list": model.ind_list,
+        "params": model.params,
+        "classes_": model.classes_,
+        "weak_cls_type": cfg.weak_cls_type,
+        "weak_cls_schedule": cfg.weak_cls_schedule,
+        "relaxation_schedule": cfg.relaxation_schedule,
+    }
+    joblib.dump(bundle, path)
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +161,10 @@ def train(split: DataSplit, cfg: CVQBoostConfig, data_cfg: DataConfig) -> ModelR
     elapsed = time.time() - t0
     LOGGER.info("  Done in %.2fs", elapsed)
 
+    if data_cfg.model_file:
+        _save_model(model, cfg, data_cfg.model_file)
+        LOGGER.info("  Saved model to %s", data_cfg.model_file)
+
     y_train_pred = model.predict(split.X_train)
     y_test_pred = model.predict(split.X_test)
 
@@ -154,7 +185,7 @@ def train(split: DataSplit, cfg: CVQBoostConfig, data_cfg: DataConfig) -> ModelR
 
     # Raw scores in [-1, +1]  ->  probabilities in [0, 1]
     raw_scores = model.predict_raw(split.X_test)
-    y_test_probs = np.array([min(0.5 * (s + 1.0), 1.0) for s in raw_scores])
+    y_test_probs = np.clip(0.5 * (raw_scores + 1.0), 0.0, 1.0)
     auc = float(roc_auc_score(split.y_test, y_test_probs))
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
@@ -183,6 +214,7 @@ def train(split: DataSplit, cfg: CVQBoostConfig, data_cfg: DataConfig) -> ModelR
 def main(
     train_file: Path | None = None,
     test_file: Path | None = None,
+    model_file: Path | None = None,
     dry_run: bool = False,
     save_plots: bool = False,
     results_file: Path = Path("qciboost_results.json"),
@@ -194,9 +226,10 @@ def main(
     no_additional_features: bool = False,
     weak_cls_type: str | None = None,
     should_over_sample: bool = False,
-    model_name_override: str |None = None,
-    non_fraud_sample_size: int | None =None,
-    use_full_dataset: bool = False,
+    over_sample_percentage: float = 1.0,
+    model_name_override: str | None = None,
+    non_fraud_sample_size: int | None = None,
+    enforce_equal_samples: bool = False,
 ):
     """Runs QCi Dirac-3 QBoost fraud training and evaluation.
 
@@ -226,8 +259,10 @@ def main(
         test_file=Path(test_file) if test_file is not None else None,
         additional_feature_names=additional_feature_names,
         should_over_sample=should_over_sample,
+        over_sample_percentage=over_sample_percentage,
         model_name_override=model_name_override,
-        limit_sample_size=not use_full_dataset,
+        enforce_equal_samples=enforce_equal_samples,
+        model_file=model_file,
     )
     if non_fraud_sample_size:
         data_cfg.non_fraud_sample_size = non_fraud_sample_size

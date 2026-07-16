@@ -26,6 +26,7 @@ def plot_roc_curves(
         save_path (Path | None): If provided, write the plot as a PNG here instead of
             calling plt.show().
     """
+    results = sorted(results, key=lambda r: r.auc, reverse=True)
     fig, ax = plt.subplots(figsize=(10, 8))
 
     for r, color in zip(results, _get_colors(len(results))):
@@ -120,7 +121,7 @@ def _wrap_label(label: str, width: int) -> str:
     #   - parenthesized groups: "(GPU)"
     #   - slash
     #   - non-whitespace sequences
-    tokens = re.findall(r"\([^)]*\)|/|[^\s/]+", label)
+    tokens = re.findall(r"\([^\s()]+\)|/|[^\s/]+", label)
 
     lines = []
     current = ""
@@ -163,11 +164,14 @@ def _bar_chart(
         label_offset (float): Vertical offset used to place the value label above
             each bar.
     """
-    smallest_word_size = max(
-        len(word) for name in names for word in re.split(r"[ ()/\\]", name)
+    smallest_word_size = min(
+        max(len(word) for name in names for word in re.split(r"[ ()/\\]", name)), 5
     )
     names = [_wrap_label(name, smallest_word_size) for name in names]
-    spacing = 2
+    ranked_tuples = sorted(zip(values, names, colors), reverse=True)
+    values, names, colors = zip(*ranked_tuples)
+
+    spacing = 3
     scaled_names = [i * spacing for i in range(len(names))]
 
     bars = ax.bar(

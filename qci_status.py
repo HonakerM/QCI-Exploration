@@ -10,6 +10,7 @@ from common.logging import get_logger, setup_logging
 # ---------------------------------------------------------------------------
 LOGGER = get_logger(__name__)
 
+
 def main():
     """Prints information about the current QCI user and session"""
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
