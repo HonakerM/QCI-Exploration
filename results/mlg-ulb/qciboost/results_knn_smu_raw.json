@@ -1,0 +1,48 @@
+{
+  "model_name": "knn SMU (raw)",
+  "training_time_seconds": 1129.8462257385254,
+  "fpr": [
+    0.0,
+    1.0
+  ],
+  "tpr": [
+    0.0,
+    1.0
+  ],
+  "auc": 0.5,
+  "log_loss": 0.03419407084584236,
+  "train_metrics": {
+    "split": "train",
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "accuracy": 0.9978608466483745,
+    "confusion_matrix": [
+      [
+        174928,
+        0
+      ],
+      [
+        375,
+        0
+      ]
+    ]
+  },
+  "test_metrics": {
+    "split": "test",
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "accuracy": 0.9978551544745129,
+    "confusion_matrix": [
+      [
+        43732,
+        0
+      ],
+      [
+        94,
+        0
+      ]
+    ]
+  }
+}

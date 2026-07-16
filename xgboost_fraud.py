@@ -171,6 +171,8 @@ def train(split: DataSplit, cfg: XGBoostConfig, data_cfg: DataConfig) -> ModelRe
     name = _MODEL_NAME
     if data_cfg.should_over_sample:
         name = f"{_MODEL_NAME} (Oversampled)"
+    if data_cfg.model_name_override:
+        name = data_cfg.model_name_override
     return ModelResults(
         model_name=name,
         training_time_seconds=elapsed,
@@ -200,6 +202,7 @@ def main(
     ),
     no_additional_features: bool = False,
     should_over_sample: bool = False,
+    model_name_override: str | None = None,
 ):
     """Runs XGBoost fraud training and evaluation.
 
@@ -225,6 +228,7 @@ def main(
         test_file=Path(test_file) if test_file is not None else None,
         additional_feature_names=additional_feature_names,
         should_over_sample=should_over_sample,
+        model_name_override=model_name_override,
     )
     if no_additional_features:
         data_cfg.additional_feature_names = []
