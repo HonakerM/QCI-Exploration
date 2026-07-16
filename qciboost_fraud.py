@@ -43,13 +43,15 @@ class CVQBoostConfig:
             'sequential' is required on Windows (single-threaded weak
             classifiers).
     """
-
-    relaxation_schedule: int = 1
+    relaxation_schedule: int = 2
     num_samples: int = 1
     lambda_coef: float = 0.0
 
     weak_cls_strategy: str = "sequential"
     weak_cls_type: str = "knn"
+    weak_cls_schedule: int = 1
+    include_smu_params: bool =True
+
 
     def to_qboost_config(self) -> dict:
         """Converts the config into keyword arguments for QBoostClassifier.
@@ -57,11 +59,33 @@ class CVQBoostConfig:
         Returns:
             dict: A dictionary of hyperparameters suitable for QBoostClassifier(**kwargs).
         """
+        weak_cls_params = {}
+        if self.include_smu_params:
+            if self.weak_cls_type == "knn":
+                weak_cls_params = {"weights":"uniform", "n_neighbors":15,"metric":"minkowski"}
+            elif self.weak_cls_type == "lda":
+                weak_cls_params = {"solver":"lsqr", "shrinkage":"auto"}
+            elif self.weak_cls_type == "lg":
+                weak_cls_params = {"penalty":"l2", "solver":"lbfgs", "C":10,}
+            elif self.weak_cls_type == "xgb":
+                weak_cls_params = {
+    'n_estimators': 100,
+    'max_depth': 3,
+    'learning_rate': 0.1,
+    'subsample': 1.0,
+    'colsample_bytree': 0.8,
+    'min_child_weight': 1,
+    'reg_lambda': 1.0,
+    'reg_alpha': 0.0
+}
         return {
             "relaxation_schedule": self.relaxation_schedule,
             "num_samples": self.num_samples,
             "lambda_coef": self.lambda_coef,
             "weak_cls_strategy": self.weak_cls_strategy,
+            "weak_cls_type": self.weak_cls_type,
+            "weak_cls_schedule": self.weak_cls_schedule,
+            "weak_cls_params": weak_cls_params,
         }
 
 
@@ -135,8 +159,12 @@ def train(split: DataSplit, cfg: CVQBoostConfig, data_cfg: DataConfig) -> ModelR
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
 
+    model_name = f"{_MODEL_NAME} ({cfg.weak_cls_type} {'Oversampled' if data_cfg.should_over_sample else ''})"
+    if data_cfg.model_name_override is not None:
+        model_name = data_cfg.model_name_override
+
     return ModelResults(
-        model_name=f"{_MODEL_NAME} ({cfg.weak_cls_type} {'Oversampled' if data_cfg.should_over_sample else ''})",
+        model_name=model_name,
         training_time_seconds=elapsed,
         fpr=fpr,
         tpr=tpr,
@@ -166,6 +194,9 @@ def main(
     no_additional_features: bool = False,
     weak_cls_type: str | None = None,
     should_over_sample: bool = False,
+    model_name_override: str |None = None,
+    non_fraud_sample_size: int | None =None,
+    use_full_dataset: bool = False,
 ):
     """Runs QCi Dirac-3 QBoost fraud training and evaluation.
 
@@ -195,7 +226,11 @@ def main(
         test_file=Path(test_file) if test_file is not None else None,
         additional_feature_names=additional_feature_names,
         should_over_sample=should_over_sample,
+        model_name_override=model_name_override,
+        limit_sample_size=not use_full_dataset,
     )
+    if non_fraud_sample_size:
+        data_cfg.non_fraud_sample_size = non_fraud_sample_size
     if no_additional_features:
         data_cfg.additional_feature_names = []
 

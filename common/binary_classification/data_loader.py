@@ -108,23 +108,27 @@ def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
     Returns:
         DataSplit: The resulting train/test feature and label arrays.
     """
-    df_non_fraud = df[df[cfg.class_name] == 0].sample(
-        cfg.non_fraud_sample_size, random_state=cfg.random_state
-    )
-    df_fraud = df[df[cfg.class_name] == 1]
+    if cfg.limit_sample_size:
+        df_non_fraud = df[df[cfg.class_name] == 0].sample(
+            cfg.non_fraud_sample_size, random_state=cfg.random_state
+        )
+        df_fraud = df[df[cfg.class_name] == 1]
 
-    balanced = (
-        pd.concat([df_non_fraud, df_fraud])
-        .sample(frac=1.0, random_state=cfg.random_state)
-        .copy()
-    )
-    balanced[cfg.class_name] = balanced[cfg.class_name].map({0: -1, 1: 1})
+        df = (
+            pd.concat([df_non_fraud, df_fraud])
+            .sample(frac=1.0, random_state=cfg.random_state)
+            .copy()
+        )
+    else:
+        df = df.dropna().copy()
 
-    X = balanced[cfg.all_feature_names].to_numpy()
-    y = balanced[cfg.class_name].to_numpy()
+    df[cfg.class_name] = df[cfg.class_name].map({0: -1, 1: 1})
+
+    X = df[cfg.all_feature_names].to_numpy()
+    y = df[cfg.class_name].to_numpy()
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=cfg.test_size, random_state=cfg.random_state
+        X, y, test_size=cfg.test_size, random_state=cfg.random_state, stratify=y
     )
 
     LOGGER.info(
@@ -133,7 +137,7 @@ def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
     LOGGER.info(f"  Test: shape={X_test.shape}, label counts={dict(Counter(y_test))}")
 
     if cfg.should_over_sample:
-        smote = SMOTE()
+        smote = SMOTE(random_state=cfg.random_state)
         X_train, y_train = smote.fit_resample(X_train, y_train)
         LOGGER.info(
             f"  Oversample Train: shape={X_train.shape}, label counts={dict(Counter(y_train))}"

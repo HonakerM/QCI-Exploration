@@ -31,9 +31,11 @@ class DataConfig:
     train_file: Optional[Path] = None
     test_file: Optional[Path] = None
 
-    should_over_sample: bool = False
+    should_over_sample: bool = True
+    model_name_override: str | None = None
     test_size: float = 0.2
 
+    limit_sample_size: bool = False
     non_fraud_sample_size: int = 1000
 
     random_state: int = 42
