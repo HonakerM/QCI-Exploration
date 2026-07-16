@@ -108,9 +108,12 @@ def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
     Returns:
         DataSplit: The resulting train/test feature and label arrays.
     """
-    if cfg.limit_sample_size:
+    if cfg.enforce_equal_samples:
         df_non_fraud = df[df[cfg.class_name] == 0].sample(
-            cfg.non_fraud_sample_size, random_state=cfg.random_state
+            cfg.non_fraud_sample_size
+            if cfg.non_fraud_sample_size
+            else len(df[df[cfg.class_name] == 1]),
+            random_state=cfg.random_state,
         )
         df_fraud = df[df[cfg.class_name] == 1]
 
@@ -137,7 +140,9 @@ def prep_data(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
     LOGGER.info(f"  Test: shape={X_test.shape}, label counts={dict(Counter(y_test))}")
 
     if cfg.should_over_sample:
-        smote = SMOTE(random_state=cfg.random_state)
+        smote = SMOTE(
+            sampling_strategy=cfg.over_sample_percentage, random_state=cfg.random_state
+        )
         X_train, y_train = smote.fit_resample(X_train, y_train)
         LOGGER.info(
             f"  Oversample Train: shape={X_train.shape}, label counts={dict(Counter(y_train))}"
