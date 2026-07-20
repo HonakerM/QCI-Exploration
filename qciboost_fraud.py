@@ -136,7 +136,6 @@ def _save_model(model: "QBoostClassifier", cfg: CVQBoostConfig, path: Path) -> N
 # Training
 # ---------------------------------------------------------------------------
 
-
 def train(split: DataSplit, cfg: CVQBoostConfig, data_cfg: DataConfig) -> ModelResults:
     """Fits QBoostClassifier on Dirac-3 and returns fully-populated ModelResults.
 
