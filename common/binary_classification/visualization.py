@@ -171,7 +171,7 @@ def _bar_chart(
     ranked_tuples = sorted(zip(values, names, colors), reverse=True)
     values, names, colors = zip(*ranked_tuples)
 
-    spacing = 3
+    spacing = 10
     scaled_names = [i * spacing for i in range(len(names))]
 
     bars = ax.bar(
@@ -194,6 +194,46 @@ def _bar_chart(
             va="bottom",
             fontsize=11,
             fontweight="bold",
+        )
+
+
+def _bar_chart(
+    ax: plt.Axes,
+    names: list[str],
+    values: list[float],
+    colors: list[str],
+    ylabel: str,
+    title: str,
+    ylim: tuple | None,
+    label_offset: float,
+) -> None:
+    ranked_tuples = sorted(zip(values, names, colors), reverse=True)
+    values, names, colors = zip(*ranked_tuples)
+
+    spacing = 10
+    scaled_names = [i * spacing for i in range(len(names))]
+
+    bars = ax.bar(
+        scaled_names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5
+    )
+
+    ax.set_xticks(scaled_names)
+    ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    if ylim:
+        ax.set_ylim(ylim)
+    ax.grid(axis="y", alpha=0.3)
+    for bar, val in zip(bars, values):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            val + label_offset,
+            f"{val:.4f}",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            fontweight="bold",
+            rotation=90,
         )
 
 

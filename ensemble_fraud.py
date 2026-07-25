@@ -9,7 +9,6 @@ from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 import typer
 from common.binary_classification.data_types import DataConfig, DataSplit, ModelResults
 from common.binary_classification.data_loader import get_data_split
-from common.binary_classification.ensemble_classifiers.qboost import CVQBoostConfig
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
@@ -20,6 +19,7 @@ from common.binary_classification.ensemble_classifiers.base import (
     available_algorithms,
     get_adapter_cls,
 )
+from common.data_files import convert_path_to_results, load_data_dict, load_yaml
 from common.logging import get_logger, setup_logging
 
 # ---------------------------------------------------------------------------
@@ -127,100 +127,84 @@ def train(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
+APP = typer.Typer()
+
 # Classifier input list. Done here to allow for imports
 ClassifierAlgorithms = StrEnum("ClassifierAlgorithms", available_algorithms())
 
 
-def main(
-    train_file: Path | None = None,
-    test_file: Path | None = None,
-    model_file: Path | None = None,
+@APP.command("test-folder")
+def test_folder(
+    test_folder: Path,
     dry_run: bool = False,
-    save_plots: bool = False,
-    results_file: Path = Path("ensemble_results.json"),
-    load_results: bool = False,
-    class_override: str | None = None,
-    additional_feature_names: list[str] = typer.Option(
-        default_factory=lambda: ["Amount", "Time"]
-    ),
-    no_additional_features: bool = False,
-    algorithm: ClassifierAlgorithms = ClassifierAlgorithms("cvqboost"),
-    weak_cls_type: str | None = None,
-    should_over_sample: bool = False,
-    over_sample_percentage: float = 1.0,
-    model_name_override: str | None = None,
-    non_fraud_sample_size: int | None = None,
-    enforce_equal_samples: bool = False,
+    display_plots: bool = False,
 ):
     """Runs fraud training and evaluation for a chosen ensemble classifier algorithm.
 
     Args:
-        train_file (Path | None): Path to the training CSV file, if any.
-        test_file (Path | None): Path to the test CSV file, if any.
-        dry_run (bool): If True, load and validate data without submitting a job.
-        save_plots (bool): If True, save ROC and metric plots as PNGs instead of
-            showing them.
-        results_file (Path): Path to save (or load) the ModelResults JSON.
-        load_results (bool): If True, load previously saved results instead of
-            training a new model.
-        class_override (str): If provided, overrides the default label column
-            name.
-        additional_feature_names (list[str]): Extra raw feature columns to include
-            alongside the engineered features.
-        no_additional_features (bool): If True, ignore additional_feature_names
-            and train on engineered features only.
-        algorithm (str): Which registered ensemble classifier to train, e.g.
-            "cvqboost". See
-            common.binary_classification.ensemble_classifiers.base.available_algorithms().
-        weak_cls_type (str | None): CVQBoost-specific weak classifier override;
-            ignored for other ensemble algorithms.
-        should_over_sample (bool): If we should oversample the training data.
+        test_folder (Path): Path to a folder containing one or more YAML test files.
+        dry_run (bool): If True, only loads the test files and validates them without
+            running any training. Defaults to False.
+    """
+    for file in test_folder.glob("**/*.yaml"):
+        LOGGER.info("Running test file: %s", file)
+        results = convert_path_to_results(file)
+        if results.exists():
+            LOGGER.warning(
+                "Results file %s already exists. Skipping test file %s.",
+                results,
+                file,
+            )
+            continue
+        test_file(file, dry_run=dry_run, display_plots=display_plots)
+
+
+@APP.command("test-file")
+def test_file(
+    test_file: Path,
+    dry_run: bool = False,
+    display_plots: bool = False,
+    save_plots: bool = False,
+):
+    """Runs fraud training and evaluation for a chosen ensemble classifier algorithm.
+
+    Args:
+        test_file (Path): Path to a YAML test file containing algorithm, data, and
+            classifier configuration.
+        dry_run (bool): If True, only loads the test file and validates it without
+            running any training. Defaults to False.
+        display_plots (bool): If True, displays ROC and metric comparison plots.
+            Defaults to False.
+        save_plots (bool): If True, saves ROC and metric comparison plots to the
+            current working directory. Defaults to False.
     """
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
 
-    data_cfg = DataConfig(
-        train_file=Path(train_file) if train_file is not None else None,
-        test_file=Path(test_file) if test_file is not None else None,
-        additional_feature_names=additional_feature_names,
-        should_over_sample=should_over_sample,
-        over_sample_percentage=over_sample_percentage,
-        model_name_override=model_name_override,
-        enforce_equal_samples=enforce_equal_samples,
-        model_file=model_file,
-    )
-    if non_fraud_sample_size:
-        data_cfg.non_fraud_sample_size = non_fraud_sample_size
-    if no_additional_features:
-        data_cfg.additional_feature_names = []
+    data = load_yaml(test_file)
 
-    if class_override:
-        data_cfg.class_name = class_override
+    algorithm = data.get("algorithm")
+    if not algorithm:
+        raise ValueError(
+            "Missing 'algorithm' key in test file. Must be one of: "
+            f"{available_algorithms()}"
+        )
 
+    data_config_raw = data.get("data")
+    if not data_config_raw:
+        raise ValueError("Missing 'data' key in test file. Must be a dict.")
+
+    classifier_config_raw = data.get("classifier")
+    if not classifier_config_raw:
+        raise ValueError("Missing 'classifier' key in test file. Must be a dict.")
+
+    data_cfg = load_data_dict(data_config_raw, DataConfig)
     adapter_cls = get_adapter_cls(algorithm)
-    classifier_cfg = adapter_cls.config_cls()()
-    # Algorithm-specific CLI overrides live here, gated to the ensemble
-    # algorithms they apply to; each new algorithm adds its own guarded block.
-    if isinstance(classifier_cfg, CVQBoostConfig) and weak_cls_type:
-        classifier_cfg.weak_cls_type = weak_cls_type
+    classifier_cfg = load_data_dict(classifier_config_raw, adapter_cls.config_cls())
 
     overall_start = time.time()
     LOGGER.info("ensemble fraud start (algorithm=%s)", algorithm)
-
-    if load_results:
-        if not results_file.exists():
-            raise FileNotFoundError(f"Results file not found: {results_file}")
-        LOGGER.info("Loading saved results from %s", results_file)
-        results = ModelResults.load(results_file)
-        print_results(results)
-
-        roc_path = Path("ensemble_roc.png") if save_plots else None
-        metric_path = Path("ensemble_metrics.png") if save_plots else None
-        plot_roc_curves([results], save_path=roc_path)
-        plot_metric_comparison([results], save_path=metric_path)
-
-        LOGGER.info("done (%.1fs total)", time.time() - overall_start)
-        return
 
     if dry_run:
         LOGGER.info("--dry-run: credentials OK, loading data and prepping split...")
@@ -257,18 +241,25 @@ def main(
             return
 
     results = train(split, adapter, data_cfg)
+
+    results_file = convert_path_to_results(test_file)
+    results_file.parent.mkdir(parents=True, exist_ok=True)
     results.save(results_file)
     LOGGER.info("Saved results to %s", results_file)
     print_results(results)
 
     # 5. Visualize
-    roc_path = Path("ensemble_roc.png") if save_plots else None
-    metric_path = Path("ensemble_metrics.png") if save_plots else None
-    plot_roc_curves([results], save_path=roc_path)
-    plot_metric_comparison([results], save_path=metric_path)
+    if display_plots:
+        plot_roc_curves([results])
+        plot_metric_comparison([results])
+    if save_plots:
+        roc_path = Path("ensemble_roc.png") if save_plots else None
+        metric_path = Path("ensemble_metrics.png") if save_plots else None
+        plot_roc_curves([results], save_path=roc_path)
+        plot_metric_comparison([results], save_path=metric_path)
 
     LOGGER.info("done (%.1fs total)", time.time() - overall_start)
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    APP()

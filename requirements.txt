@@ -7,8 +7,10 @@ qci-client>=5
 # QCI models and base config
 eqc_models>=0.15
 # SMOTE and oversampling
-imblearn>=0.14
+imbalanced-learn>=0.14
 # visualization
 matplotlib>=3
+# test file loading/writing
+dataclass-wizard[yaml]>=1.0
 # formatting (optional)
 # ruff

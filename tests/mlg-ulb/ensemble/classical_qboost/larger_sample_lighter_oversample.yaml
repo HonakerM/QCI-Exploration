@@ -1,0 +1,35 @@
+algorithm: classical_qboost
+classifier:
+  optimization_method: "L-BFGS-B"
+  include_smu_params: true
+  lambda_coef: 0.0
+  num_samples: 1
+  weak_cls_schedule: 1
+  weak_cls_strategy: sequential
+  weak_cls_type: lg
+data:
+  additional_feature_names:
+  - Amount
+  - Time
+  class_name: Class
+  enforce_equal_samples: true
+  engineered_feature_names:
+  - Comp_Sum
+  - Comp_Min
+  - Comp_Max
+  - Comp_Avg
+  - Comp_Std
+  - Comp_Pos
+  - Comp_Neg
+  - Comp_Var
+  index_column: id
+  model_file: null
+  model_name_override: "classical lbfgs 5k oversample0.5"
+  non_fraud_sample_size: 5000
+  over_sample_percentage: 0.5
+  random_state: 42
+  should_over_sample: true
+  test_file: data\mlg-ulb\test.csv
+  test_size: 0.3
+  train_file: data\mlg-ulb\train.csv
+  v_feature_names: []
