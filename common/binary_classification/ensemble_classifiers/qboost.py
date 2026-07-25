@@ -112,6 +112,15 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
 
         self.model = QBoostClassifier(**config.to_classifier_config())
 
+        og_solve = self.model.solve
+
+        def stash_solve(*args, **kwargs):
+            result = og_solve(*args, **kwargs)
+            self.result = result
+            return result
+
+        self.model.solve = stash_solve
+
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
         """Submits a training job to QCi Dirac-3 and fits in place."""
         self.model.fit(X_train, y_train)
@@ -137,6 +146,10 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
             "relaxation_schedule": self.config.relaxation_schedule,
         }
         joblib.dump(bundle, path)
+
+    def get_timing_info(self) -> dict[str, float]:
+        """Returns adapter-specific timing measurements."""
+        return self.result.preprocessing_time
 
     def submission_warning(self) -> str | None:
         """Warns that training will incur charges on the QCi account."""

@@ -7,12 +7,18 @@ import numpy as np
 from dotenv import load_dotenv
 from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 import typer
-from common.binary_classification.data_types import DataConfig, DataSplit, ModelResults
+from common.binary_classification.data_types import (
+    DataConfig,
+    DataSplit,
+    ModelResults,
+    TimingInfo,
+)
 from common.binary_classification.data_loader import get_data_split
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
     plot_roc_curves,
+    plot_timing_comparison,
 )
 from common.binary_classification.ensemble_classifiers.base import (
     ClassifierAdapter,
@@ -55,7 +61,10 @@ def validate_labels(split: DataSplit):
 
 
 def train(
-    split: DataSplit, adapter: ClassifierAdapter, data_cfg: DataConfig
+    split: DataSplit,
+    adapter: ClassifierAdapter,
+    data_cfg: DataConfig,
+    data_prep_seconds: float = 0.0,
 ) -> ModelResults:
     """Fits `adapter` and returns fully-populated ModelResults.
 
@@ -74,17 +83,21 @@ def train(
         ModelResults: The trained model's metrics, ROC curve data, and timing.
     """
     LOGGER.info("Submitting %s job...", adapter.config.display_name)
-    t0 = time.time()
+    t0 = time.perf_counter()
     adapter.fit(split.X_train, split.y_train)
-    elapsed = time.time() - t0
-    LOGGER.info("  Done in %.2fs", elapsed)
+    fit_seconds = time.perf_counter() - t0
+    LOGGER.info("  Fit done in %.2fs", fit_seconds)
 
     if data_cfg.model_file:
         adapter.save(data_cfg.model_file)
         LOGGER.info("  Saved model to %s", data_cfg.model_file)
 
+    t0 = time.perf_counter()
     y_train_pred = adapter.predict(split.X_train)
     y_test_pred = adapter.predict(split.X_test)
+    y_test_probs = adapter.predict_proba(split.X_test)
+    predict_seconds = time.perf_counter() - t0
+    LOGGER.info("  Predict done in %.2fs", predict_seconds)
 
     train_metrics = compute_metrics(
         split.y_train,
@@ -101,10 +114,13 @@ def train(
         pos_label=_POS_LABEL,
     )
 
-    y_test_probs = adapter.predict_proba(split.X_test)
     auc = float(roc_auc_score(split.y_test, y_test_probs))
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
+
+    train_timing = adapter.get_train_timing()
+    if train_timing:
+        fit_seconds = train_timing
 
     model_name = adapter.config.display_name
     if data_cfg.should_over_sample:
@@ -114,7 +130,11 @@ def train(
 
     return ModelResults(
         model_name=model_name,
-        training_time_seconds=elapsed,
+        timing=TimingInfo(
+            data_prep=data_prep_seconds,
+            fit=fit_seconds,
+            predict=predict_seconds,
+        ),
         fpr=fpr,
         tpr=tpr,
         auc=auc,
@@ -164,7 +184,7 @@ def test_folder(
 def test_file(
     test_file: Path,
     dry_run: bool = False,
-    display_plots: bool = False,
+    display_plots: bool = True,
     save_plots: bool = False,
 ):
     """Runs fraud training and evaluation for a chosen ensemble classifier algorithm.
@@ -210,7 +230,9 @@ def test_file(
         LOGGER.info("--dry-run: credentials OK, loading data and prepping split...")
 
     # 2. Load & engineer features
+    data_prep_start = time.perf_counter()
     split = get_data_split(data_cfg)
+    data_prep_seconds = time.perf_counter() - data_prep_start
 
     validate_labels(split)
     LOGGER.info(
@@ -240,7 +262,7 @@ def test_file(
             LOGGER.error("EXITING")
             return
 
-    results = train(split, adapter, data_cfg)
+    results = train(split, adapter, data_cfg, data_prep_seconds=data_prep_seconds)
 
     results_file = convert_path_to_results(test_file)
     results_file.parent.mkdir(parents=True, exist_ok=True)
@@ -252,11 +274,14 @@ def test_file(
     if display_plots:
         plot_roc_curves([results])
         plot_metric_comparison([results])
+        plot_timing_comparison([results])
     if save_plots:
         roc_path = Path("ensemble_roc.png") if save_plots else None
         metric_path = Path("ensemble_metrics.png") if save_plots else None
+        timing_path = Path("ensemble_timing.png") if save_plots else None
         plot_roc_curves([results], save_path=roc_path)
         plot_metric_comparison([results], save_path=metric_path)
+        plot_timing_comparison([results], save_path=timing_path)
 
     LOGGER.info("done (%.1fs total)", time.time() - overall_start)
 

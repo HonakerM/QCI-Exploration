@@ -11,12 +11,14 @@ from common.binary_classification.data_types import (
     DataConfig,
     DataSplit,
     ModelResults,
+    TimingInfo,
 )
 from common.binary_classification.data_loader import get_data_split
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
     plot_roc_curves,
+    plot_timing_comparison,
 )
 from common.logging import get_logger, setup_logging
 
@@ -128,7 +130,12 @@ _POS_LABEL = 1
 # ---------------------------------------------------------------------------
 
 
-def train(split: DataSplit, cfg: XGBoostConfig, data_cfg: DataConfig) -> ModelResults:
+def train(
+    split: DataSplit,
+    cfg: XGBoostConfig,
+    data_cfg: DataConfig,
+    data_prep_seconds: float = 0.0,
+) -> ModelResults:
     """Fits XGBClassifier and returns fully-populated ModelResults.
 
     Args:
@@ -140,13 +147,16 @@ def train(split: DataSplit, cfg: XGBoostConfig, data_cfg: DataConfig) -> ModelRe
     """
     model = XGBClassifier(**cfg.as_dict(), enable_categorical=True)
     LOGGER.info("Training %s...", _MODEL_NAME)
-    t0 = time.time()
+    t0 = time.perf_counter()
     model.fit(split.X_train, split.y_train)
-    elapsed = time.time() - t0
-    LOGGER.info("Done in %.2fs", elapsed)
+    fit_seconds = time.perf_counter() - t0
+    LOGGER.info("Done in %.2fs", fit_seconds)
 
+    t0 = time.perf_counter()
     y_train_pred = model.predict(split.X_train)
     y_test_pred = model.predict(split.X_test)
+    y_test_probs = model.predict_proba(split.X_test)[:, 1]
+    predict_seconds = time.perf_counter() - t0
 
     train_metrics = compute_metrics(
         split.y_train,
@@ -163,7 +173,6 @@ def train(split: DataSplit, cfg: XGBoostConfig, data_cfg: DataConfig) -> ModelRe
         pos_label=_POS_LABEL,
     )
 
-    y_test_probs = model.predict_proba(split.X_test)[:, 1]
     auc = float(roc_auc_score(split.y_test, y_test_probs))
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
@@ -175,13 +184,17 @@ def train(split: DataSplit, cfg: XGBoostConfig, data_cfg: DataConfig) -> ModelRe
         name = data_cfg.model_name_override
     return ModelResults(
         model_name=name,
-        training_time_seconds=elapsed,
         fpr=fpr,
         tpr=tpr,
         auc=auc,
         log_loss=logloss,
         train_metrics=train_metrics,
         test_metrics=test_metrics,
+        timing=TimingInfo(
+            data_prep=data_prep_seconds,
+            fit=fit_seconds,
+            predict=predict_seconds,
+        ),
     )
 
 
@@ -241,7 +254,10 @@ def main(
     overall_start = time.time()
     LOGGER.info("xgboost_fraud start")
 
+    data_prep_start = time.perf_counter()
     split = get_data_split(data_cfg)
+    split = remap_labels(split)
+    data_prep_seconds = time.perf_counter() - data_prep_start
     LOGGER.info(
         "  %s train rows | %s test rows | %s features",
         split.n_train,
@@ -256,8 +272,7 @@ def main(
         LOGGER.info("Loading saved results from %s", results_file)
         results = ModelResults.load(results_file)
     else:
-        xgb_split = remap_labels(split)
-        results = train(xgb_split, xgb_cfg, data_cfg)
+        results = train(split, xgb_cfg, data_cfg, data_prep_seconds=data_prep_seconds)
         results.save(results_file)
         LOGGER.info("Saved results to %s", results_file)
 
@@ -266,8 +281,10 @@ def main(
     # 4. Visualize
     roc_path = Path("xgboost_roc.png") if save_plots else None
     metric_path = Path("xgboost_metrics.png") if save_plots else None
+    timing_path = Path("xgboost_timing.png") if save_plots else None
     plot_roc_curves([results], save_path=roc_path)
     plot_metric_comparison([results], save_path=metric_path)
+    plot_timing_comparison([results], save_path=timing_path)
 
     LOGGER.info("done (%.1fs total)", time.time() - overall_start)
 

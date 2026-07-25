@@ -161,12 +161,50 @@ class ClassificationMetrics:
 
 
 @dataclass
+class TimingInfo:
+    """Durations for the main stages of a model run.
+
+    Attributes:
+        data_prep (float): Time spent preparing the dataset.
+        fit (float): Time spent fitting the model.
+        predict (float): Time spent generating predictions.
+        adapter (dict[str, float]): Adapter-specific timing measurements.
+    """
+
+    data_prep: float = 0.0
+    fit: float = 0.0
+    predict: float = 0.0
+
+    @property
+    def total_seconds(self) -> float:
+        """Returns the total recorded runtime in seconds."""
+        return self.data_prep + self.fit + self.predict
+
+    def to_dict(self) -> dict[str, Any]:
+        """Converts this timing info into a JSON-serializable dictionary."""
+        return {
+            "data_prep": self.data_prep,
+            "fit": self.fit,
+            "predict": self.predict,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TimingInfo":
+        """Reconstructs timing info from a dictionary representation."""
+        return cls(
+            data_prep=float(data.get("data_prep", 0.0)),
+            fit=float(data.get("fit", 0.0)),
+            predict=float(data.get("predict", 0.0)),
+        )
+
+
+@dataclass
 class ModelResults:
     """Everything produced by training and evaluating one model.
 
     Attributes:
         model_name (str): Name of the trained model.
-        training_time_seconds (float): Wall-clock training time in seconds.
+        timing (TimingInfo): Stage timings for the run.
         fpr (np.ndarray): False positive rates for the ROC curve.
         tpr (np.ndarray): True positive rates for the ROC curve.
         auc (float): Area under the ROC curve.
@@ -176,7 +214,6 @@ class ModelResults:
     """
 
     model_name: str
-    training_time_seconds: float
 
     fpr: np.ndarray
     tpr: np.ndarray
@@ -186,6 +223,12 @@ class ModelResults:
 
     train_metrics: ClassificationMetrics
     test_metrics: ClassificationMetrics
+    timing: TimingInfo = field(default_factory=TimingInfo)
+
+    @property
+    def training_time_seconds(self) -> float:
+        """Returns the total recorded runtime in seconds."""
+        return self.timing.total_seconds
 
     def to_dict(self) -> dict[str, Any]:
         """Converts these results into a JSON-serializable dictionary.
@@ -197,6 +240,7 @@ class ModelResults:
         return {
             "model_name": self.model_name,
             "training_time_seconds": self.training_time_seconds,
+            "timing": self.timing.to_dict(),
             "fpr": self.fpr.tolist(),
             "tpr": self.tpr.tolist(),
             "auc": self.auc,
@@ -239,9 +283,14 @@ class ModelResults:
         Returns:
             ModelResults: The reconstructed ModelResults instance.
         """
+        timing_data = data.get("timing")
+        if timing_data is None:
+            timing = TimingInfo(fit=float(data.get("training_time_seconds", 0.0)))
+        else:
+            timing = TimingInfo.from_dict(timing_data)
         return cls(
             model_name=data["model_name"],
-            training_time_seconds=float(data["training_time_seconds"]),
+            timing=timing,
             fpr=np.asarray(data["fpr"], dtype=float),
             tpr=np.asarray(data["tpr"], dtype=float),
             auc=float(data["auc"]),

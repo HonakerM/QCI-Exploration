@@ -102,6 +102,117 @@ def plot_metric_comparison(
     _save_or_show(fig, save_path)
 
 
+def plot_timing_comparison(
+    results: list[ModelResults],
+    save_path: Path | None = None,
+) -> None:
+    """Plots stacked timing bars for each ModelResults in results.
+
+    The bars break total runtime into data preparation, fit, predict, and adapter
+    timings so the relative cost of each stage is easy to compare.
+
+    Args:
+        results (list[ModelResults]): One ModelResults per model.
+        save_path (Path | None): If provided, write the plot as a PNG here instead of
+            calling plt.show().
+    """
+    names = [r.model_name for r in results]
+    timing_values = [r.timing for r in results]
+    labels = ["Data Prep", "Fit", "Predict"]
+    colors = _get_colors(len(labels))
+
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    spacing = 10
+    bar_width = 0.8
+    x_positions = [i * spacing for i in range(len(results))]
+    bottoms = [0.0] * len(results)
+    components = [
+        [timing.data_prep for timing in timing_values],
+        [timing.fit for timing in timing_values],
+        [timing.predict for timing in timing_values],
+    ]
+
+    totals = [sum(vals) for vals in zip(*components)]
+    max_total = max(totals) if totals else 0.0
+    # Segments shorter than this fraction of the tallest bar get pulled
+    # into a stacked text block above the bar instead of an inline label.
+    small_threshold = 0.03 * max_total if max_total else 0.0
+
+    # Collect small-segment label lines per bar, in stacking order.
+    pending_outside_labels: list[list[str]] = [[] for _ in results]
+
+    for component_values, color, label in zip(components, colors, labels):
+        bars = ax.bar(
+            x_positions,
+            component_values,
+            width=bar_width,
+            bottom=bottoms,
+            color=color,
+            alpha=0.8,
+            edgecolor="black",
+            linewidth=1.2,
+            label=label,
+        )
+        for idx, value in enumerate(component_values):
+            if value <= 0:
+                continue
+            seg_bottom = bottoms[idx]
+            if value >= small_threshold:
+                # Plenty of room: center the label inside the segment.
+                ax.text(
+                    bars[idx].get_x() + bars[idx].get_width() / 2,
+                    seg_bottom + value / 2,
+                    f"{value:.3f}s",
+                    ha="center",
+                    va="center",
+                    fontsize=9,
+                    fontweight="bold",
+                )
+            else:
+                # Too thin to hold text inline: defer to the stacked
+                # text block drawn above the bar.
+                pending_outside_labels[idx].append(f"{label}: {value:.3f}s")
+
+        bottoms = [bottom + value for bottom, value in zip(bottoms, component_values)]
+
+    # Draw one multi-line text block just above each bar (offset in points,
+    # so it's independent of the x-axis scale/range) listing any segments
+    # too small to label inline.
+    for idx, lines in enumerate(pending_outside_labels):
+        if not lines:
+            continue
+        ax.annotate(
+            "\n".join(lines),
+            xy=(x_positions[idx], bottoms[idx]),
+            xytext=(0, 8),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            fontweight="bold",
+        )
+
+    # Give the stacked text blocks room to breathe above the tallest bar.
+    max_lines = max((len(v) for v in pending_outside_labels), default=0)
+    headroom = max_total * (0.06 * max(max_lines, 1) + 0.05) if max_total else 1.0
+    ax.set_ylim(0, max_total + headroom)
+
+    # Keep bars from ballooning to fill the figure width when there's only
+    # one or two of them.
+    ax.set_xlim(x_positions[0] - spacing / 2, x_positions[-1] + spacing / 2)
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
+    ax.set_ylabel("Seconds", fontsize=12)
+    ax.set_title("Timing Comparison by Training Stage", fontsize=14, fontweight="bold")
+    ax.legend(loc="upper right", fontsize=10)
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    _save_or_show(fig, save_path)
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------

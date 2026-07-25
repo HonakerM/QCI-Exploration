@@ -88,6 +88,7 @@ class ClassicalQBoostClassifier(QBoostClassifier):
         self.max_iter = max_iter
         self.tol = tol
         self.method = method
+        self.minimize_elapsed = None
 
     def solve(self):
         """Classically solves the bounded QUBO relaxation via L-BFGS-B.
@@ -122,7 +123,7 @@ class ClassicalQBoostClassifier(QBoostClassifier):
         # Start at the midpoint of each variable's box constraint.
         x0 = np.asarray(self.upper_bound, dtype=np.float64).reshape(-1) / 2.0
 
-        t0 = time.time()
+        t0 = time.perf_counter()
         result = minimize(
             objective,
             x0,
@@ -131,9 +132,11 @@ class ClassicalQBoostClassifier(QBoostClassifier):
             bounds=bounds,
             options={"maxiter": self.max_iter, "ftol": self.tol},
         )
-        elapsed = time.time() - t0
+        elapsed = time.perf_counter() - t0
 
         sol = result.x
+
+        self.minimize_elapsed = elapsed
 
         response = {
             "solver": "scipy.optimize.minimize (L-BFGS-B)",
@@ -143,8 +146,6 @@ class ClassicalQBoostClassifier(QBoostClassifier):
             "final_objective": float(result.fun),
             "solve_time_seconds": elapsed,
         }
-
-        print(response)
 
         return sol, response
 
@@ -263,6 +264,10 @@ class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
             "relaxation_schedule": self.config.relaxation_schedule,
         }
         joblib.dump(bundle, path)
+
+    def get_train_timing(self) -> float | None:
+        """Returns adapter-specific timing measurements."""
+        return self.model.minimize_elapsed
 
     def submission_warning(self) -> str | None:
         """Warns that training will incur charges on the QCi account."""
