@@ -153,6 +153,8 @@ APP = typer.Typer()
 
 # Classifier input list. Done here to allow for imports
 ClassifierAlgorithms = StrEnum("ClassifierAlgorithms", available_algorithms())
+#
+SUPPRESS_WARNINGS = False
 
 
 @APP.command("test-folder")
@@ -160,6 +162,7 @@ def test_folder(
     test_folder: Path,
     dry_run: bool = False,
     display_plots: bool = False,
+    suppress_warnings: bool = False,
 ):
     """Runs fraud training and evaluation for a chosen ensemble classifier algorithm.
 
@@ -168,6 +171,10 @@ def test_folder(
         dry_run (bool): If True, only loads the test files and validates them without
             running any training. Defaults to False.
     """
+    if suppress_warnings:
+        global SUPPRESS_WARNINGS
+        SUPPRESS_WARNINGS = True
+
     for file in test_folder.glob("**/*.yaml"):
         LOGGER.info("Running test file: %s", file)
         results = convert_path_to_results(file)
@@ -254,7 +261,7 @@ def test_file(
     adapter = adapter_cls(classifier_cfg)
 
     warning = adapter.submission_warning()
-    if warning is not None:
+    if not SUPPRESS_WARNINGS and warning is not None:
         LOGGER.error(warning)
         LOGGER.error("TYPE `start` AND PRESS <enter> TO CONTINUE")
         LOGGER.error("ANY OTHER INPUT OR <ctrl>+c WILL EXIT")
