@@ -108,8 +108,9 @@ def plot_timing_comparison(
 ) -> None:
     """Plots stacked timing bars for each ModelResults in results.
 
-    The bars break total runtime into data preparation, fit, predict, and adapter
-    timings so the relative cost of each stage is easy to compare.
+    The bars break total runtime into data preparation, fit, predict, and any
+    adapter-specific timing keys so the relative cost of each stage is easy to
+    compare.
 
     Args:
         results (list[ModelResults]): One ModelResults per model.
@@ -118,7 +119,15 @@ def plot_timing_comparison(
     """
     names = [r.model_name for r in results]
     timing_values = [r.timing for r in results]
-    labels = ["Data Prep", "Fit", "Predict"]
+    adapter_keys: list[str] = []
+    seen_keys: set[str] = set()
+    for timing in timing_values:
+        for key in timing.adapter:
+            if key not in seen_keys:
+                seen_keys.add(key)
+                adapter_keys.append(key)
+
+    labels = ["Data Prep", "Fit", "Predict", *[key.title() for key in adapter_keys]]
     colors = _get_colors(len(labels))
 
     fig, ax = plt.subplots(figsize=(14, 7))
@@ -129,9 +138,15 @@ def plot_timing_comparison(
     bottoms = [0.0] * len(results)
     components = [
         [timing.data_prep for timing in timing_values],
-        [timing.fit for timing in timing_values],
+        [timing.fit if timing.fit is not None else 0.0 for timing in timing_values],
         [timing.predict for timing in timing_values],
     ]
+    components.extend(
+        [
+            [timing.adapter.get(key, 0.0) for timing in timing_values]
+            for key in adapter_keys
+        ]
+    )
 
     totals = [sum(vals) for vals in zip(*components)]
     max_total = max(totals) if totals else 0.0

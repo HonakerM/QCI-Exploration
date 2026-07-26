@@ -90,7 +90,7 @@ class ClassicalQBoostClassifier(QBoostClassifier):
         self.method = method
         self.minimize_elapsed = None
 
-    def solve(self):
+    def solve(self):  # type: ignore[override]
         """Classically solves the bounded QUBO relaxation via L-BFGS-B.
 
         Reads `self._J`, `self._C`, and `self.upper_bound` exactly as
@@ -239,6 +239,17 @@ class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
         super().__init__(config)
         self.model = ClassicalQBoostClassifier(**config.to_classifier_config())
 
+        og_hamiltonian = self.model.get_hamiltonian
+
+        def timed_get_hamiltonian(*args, **kwargs):
+            t0 = time.perf_counter()
+            result = og_hamiltonian(*args, **kwargs)
+            elapsed = time.perf_counter() - t0
+            self.model.get_hamiltonian_elapsed = elapsed
+            return result
+
+        self.model.get_hamiltonian = timed_get_hamiltonian
+
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
         """Submits a training job to QCi Dirac-3 and fits in place."""
         self.model.fit(X_train, y_train)
@@ -265,9 +276,14 @@ class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
         }
         joblib.dump(bundle, path)
 
-    def get_train_timing(self) -> float | None:
+    def get_train_timing(self) -> dict[str, float] | None:
         """Returns adapter-specific timing measurements."""
-        return self.model.minimize_elapsed
+        if self.model.minimize_elapsed is None:
+            return None
+        return {
+            "solve": float(self.model.minimize_elapsed),
+            "get_hamiltonian": float(self.model.get_hamiltonian_elapsed),
+        }
 
     def submission_warning(self) -> str | None:
         """Warns that training will incur charges on the QCi account."""

@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+import time
 
 import joblib
 import numpy as np
@@ -111,19 +112,22 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
         from eqc_models.ml import QBoostClassifier
 
         self.model = QBoostClassifier(**config.to_classifier_config())
+        self.result: object | None = None
 
-        og_solve = self.model.solve
+        og_hamiltonian = self.model.get_hamiltonian
 
-        def stash_solve(*args, **kwargs):
-            result = og_solve(*args, **kwargs)
-            self.result = result
+        def timed_get_hamiltonian(*args, **kwargs):
+            t0 = time.perf_counter()
+            result = og_hamiltonian(*args, **kwargs)
+            elapsed = time.perf_counter() - t0
+            self.model.get_hamiltonian_elapsed = elapsed
             return result
 
-        self.model.solve = stash_solve
+        self.model.get_hamiltonian = timed_get_hamiltonian
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
         """Submits a training job to QCi Dirac-3 and fits in place."""
-        self.model.fit(X_train, y_train)
+        self.result = self.model.fit(X_train, y_train)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Returns hard {-1, +1} predictions."""
@@ -147,9 +151,37 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
         }
         joblib.dump(bundle, path)
 
-    def get_timing_info(self) -> dict[str, float]:
+    def get_train_timing(self) -> dict[str, float] | None:
         """Returns adapter-specific timing measurements."""
-        return self.result.preprocessing_time
+        solve_resp = self.result
+
+        NS_TO_S = 1e-9
+
+        times = {
+            "get_hamiltonian": float(self.model.get_hamiltonian_elapsed),
+            "preprocessing": float(solve_resp.preprocessing_time) * NS_TO_S,
+        }
+
+        if len(solve_resp.run_time) == 1:
+            times["run"] = float(solve_resp.run_time[0]) * NS_TO_S
+        else:
+            times.update(
+                {
+                    f"run_{i}": float(t) * NS_TO_S
+                    for i, t in enumerate(solve_resp.run_time)
+                }
+            )
+
+        if len(solve_resp.postprocessing_time) == 1:
+            times["postprocessing"] = float(solve_resp.postprocessing_time[0]) * NS_TO_S
+        else:
+            times.update(
+                {
+                    f"postprocessing_{i}": float(t) * NS_TO_S
+                    for i, t in enumerate(solve_resp.postprocessing_time)
+                }
+            )
+        return times
 
     def submission_warning(self) -> str | None:
         """Warns that training will incur charges on the QCi account."""

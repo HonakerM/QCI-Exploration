@@ -166,35 +166,48 @@ class TimingInfo:
 
     Attributes:
         data_prep (float): Time spent preparing the dataset.
-        fit (float): Time spent fitting the model.
+        fit (float | None): Time spent fitting the model, if captured directly.
         predict (float): Time spent generating predictions.
         adapter (dict[str, float]): Adapter-specific timing measurements.
     """
 
     data_prep: float = 0.0
-    fit: float = 0.0
+    fit: float | None = 0.0
     predict: float = 0.0
+    adapter: dict[str, float] = field(default_factory=dict)
+
+    @property
+    def adapter_seconds(self) -> float:
+        """Returns the total adapter-specific runtime in seconds."""
+        return sum(self.adapter.values())
 
     @property
     def total_seconds(self) -> float:
         """Returns the total recorded runtime in seconds."""
-        return self.data_prep + self.fit + self.predict
+        fit_seconds = self.fit if self.fit is not None else self.adapter_seconds
+        return self.data_prep + fit_seconds + self.predict
 
     def to_dict(self) -> dict[str, Any]:
         """Converts this timing info into a JSON-serializable dictionary."""
-        return {
+        data: dict[str, Any] = {
             "data_prep": self.data_prep,
             "fit": self.fit,
             "predict": self.predict,
         }
+        if self.adapter:
+            data["adapter"] = self.adapter
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TimingInfo":
         """Reconstructs timing info from a dictionary representation."""
+        adapter_data = data.get("adapter", {})
+        adapter = adapter_data if isinstance(adapter_data, dict) else {}
         return cls(
             data_prep=float(data.get("data_prep", 0.0)),
-            fit=float(data.get("fit", 0.0)),
+            fit=(None if data.get("fit") is None else float(data.get("fit", 0.0))),
             predict=float(data.get("predict", 0.0)),
+            adapter={str(key): float(value) for key, value in adapter.items()},
         )
 
 

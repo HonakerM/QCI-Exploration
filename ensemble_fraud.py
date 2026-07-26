@@ -118,9 +118,9 @@ def train(
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
 
-    train_timing = adapter.get_train_timing()
-    if train_timing:
-        fit_seconds = train_timing
+    adapter_timing = adapter.get_train_timing()
+    if adapter_timing is not None:
+        fit_seconds = None
 
     model_name = adapter.config.display_name
     if data_cfg.should_over_sample:
@@ -134,6 +134,7 @@ def train(
             data_prep=data_prep_seconds,
             fit=fit_seconds,
             predict=predict_seconds,
+            adapter=adapter_timing or {},
         ),
         fpr=fpr,
         tpr=tpr,

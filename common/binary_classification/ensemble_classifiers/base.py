@@ -133,7 +133,7 @@ class ClassifierAdapter(ABC, Generic[TConfig]):
         """Persists the fitted model to disk at `path`."""
         raise NotImplementedError
 
-    def get_train_timing(self) -> float | None:
+    def get_train_timing(self) -> dict[str, float] | None:
         return None
 
     def submission_warning(self) -> str | None:
