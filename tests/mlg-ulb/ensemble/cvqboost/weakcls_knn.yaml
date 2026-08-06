@@ -7,6 +7,10 @@ classifier:
   weak_cls_schedule: 1
   weak_cls_strategy: sequential
   weak_cls_type: knn
+  weak_cls_params:
+    weights: uniform
+    n_neighbors: 15
+    metric: minkowski
 data:
   additional_feature_names:
   - Amount

@@ -1,12 +1,20 @@
 algorithm: cvqboost
 classifier:
-  include_smu_params: true
   lambda_coef: 0.0
   num_samples: 1
   relaxation_schedule: 2
   weak_cls_schedule: 1
   weak_cls_strategy: sequential
   weak_cls_type: xgb
+  weak_cls_params:
+    n_estimators: 100
+    max_depth: 3
+    learning_rate: 0.1
+    subsample: 1.0
+    colsample_bytree: 0.8
+    min_child_weight: 1
+    reg_lambda: 1.0
+    reg_alpha: 0.0
 data:
   additional_feature_names:
   - Amount

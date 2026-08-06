@@ -1,12 +1,14 @@
 algorithm: cvqboost
 classifier:
-  include_smu_params: true
   lambda_coef: 0.0
   num_samples: 1
   relaxation_schedule: 2
   weak_cls_schedule: 1
   weak_cls_strategy: sequential
   weak_cls_type: lda
+  weak_cls_params:
+    solver: lsqr
+    shrinkage: auto
 data:
   additional_feature_names:
   - Amount

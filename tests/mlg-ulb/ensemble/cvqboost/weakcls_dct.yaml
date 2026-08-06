@@ -1,6 +1,5 @@
 algorithm: cvqboost
 classifier:
-  include_smu_params: true
   lambda_coef: 0.0
   num_samples: 1
   relaxation_schedule: 2

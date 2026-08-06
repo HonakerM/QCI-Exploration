@@ -1,12 +1,15 @@
 algorithm: classical_qboost
 classifier:
   optimization_method: "Nelder-Mead"
-  include_smu_params: true
   lambda_coef: 0.0
   num_samples: 1
   weak_cls_schedule: 1
   weak_cls_strategy: sequential
   weak_cls_type: lg
+  weak_cls_params:
+    penalty: l2
+    solver: lbfgs
+    C: 10
 data:
   additional_feature_names:
   - Amount
