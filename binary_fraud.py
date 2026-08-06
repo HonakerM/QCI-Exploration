@@ -1,4 +1,11 @@
-"""Trains and evaluates pluggable ensemble classifiers for fraud detection."""
+"""Trains and evaluates pluggable binary classifiers for fraud detection.
+
+This runner unifies the previous `ensemble_fraud.py` and the newer
+`classifier_fraud.py` behavior: it accepts YAML test files that specify an
+`algorithm`, `data`, and `classifier` section, builds the requested adapter
+from the shared registry, runs training/evaluation, and saves results to the
+corresponding `results/...` JSON path.
+"""
 
 from enum import StrEnum
 import time
@@ -7,52 +14,37 @@ import numpy as np
 from dotenv import load_dotenv
 from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 import typer
+
+from common.binary_classification.ensemble_classifiers import *
+from common.binary_classification.classifiers import *
+from common.binary_classification.base import (
+    ClassifierAdapter,
+    available_algorithms,
+    get_adapter_cls,
+)
+from common.binary_classification.data_loader import get_data_split
 from common.binary_classification.data_types import (
     DataConfig,
     DataSplit,
     ModelResults,
     TimingInfo,
 )
-from common.binary_classification.data_loader import get_data_split
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
     plot_roc_curves,
     plot_timing_comparison,
 )
-from common.binary_classification.ensemble_classifiers.base import (
-    ClassifierAdapter,
-    available_algorithms,
-    get_adapter_cls,
-)
 from common.data_files import convert_path_to_results, load_data_dict, load_yaml
 from common.logging import get_logger, setup_logging
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-_LABELS = [-1, 1]  # every registered ensemble classifier requires {-1, +1} labels
+_LABELS = [-1, 1]
 _POS_LABEL = 1
 LOGGER = get_logger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Label validation
-# ---------------------------------------------------------------------------
-
-
-def validate_labels(split: DataSplit):
-    """Asserts that labels are exactly {-1, +1}, as every registered ensemble
-    classifier requires.
-
-    Args:
-        split (DataSplit): The data split whose test labels should be validated.
-    """
-    bad = split.y_test[~np.isin(split.y_test, [-1, 1])]
-    if len(bad):
-        raise AssertionError(
-            f"Ensemble classifiers here require labels in {{-1, 1}}. Found: {bad}"
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -68,19 +60,9 @@ def train(
 ) -> ModelResults:
     """Fits `adapter` and returns fully-populated ModelResults.
 
-    Written entirely against the ClassifierAdapter interface, so it works
-    unchanged for any registered ensemble algorithm.
-
-    Labels in split must be {-1, +1} - call validate_labels() before this
-    function if you are unsure.
-
-    Args:
-        split (DataSplit): Training and test data with labels in {-1, +1}.
-        adapter (ClassifierAdapter): The ensemble classifier to fit and evaluate.
-        data_cfg (DataConfig): Data/run configuration (oversampling, naming, etc).
-
-    Returns:
-        ModelResults: The trained model's metrics, ROC curve data, and timing.
+    The runner always works with labels in {-1, +1}; adapters that require a
+    different label encoding (e.g. XGBoost) are expected to perform any
+    internal remapping themselves.
     """
     LOGGER.info("Submitting %s job...", adapter.config.display_name)
     t0 = time.perf_counter()
@@ -153,7 +135,6 @@ APP = typer.Typer()
 
 # Classifier input list. Done here to allow for imports
 ClassifierAlgorithms = StrEnum("ClassifierAlgorithms", available_algorithms())
-#
 SUPPRESS_WARNINGS = False
 
 
@@ -163,8 +144,9 @@ def test_folder(
     dry_run: bool = False,
     display_plots: bool = False,
     suppress_warnings: bool = False,
+    rerun: bool = False
 ):
-    """Runs fraud training and evaluation for a chosen ensemble classifier algorithm.
+    """Runs fraud training and evaluation for a chosen classifier algorithm.
 
     Args:
         test_folder (Path): Path to a folder containing one or more YAML test files.
@@ -178,7 +160,7 @@ def test_folder(
     for file in test_folder.glob("**/*.yaml"):
         LOGGER.info("Running test file: %s", file)
         results = convert_path_to_results(file)
-        if results.exists():
+        if results.exists() and not rerun:
             LOGGER.warning(
                 "Results file %s already exists. Skipping test file %s.",
                 results,
@@ -195,7 +177,7 @@ def test_file(
     display_plots: bool = True,
     save_plots: bool = False,
 ):
-    """Runs fraud training and evaluation for a chosen ensemble classifier algorithm.
+    """Runs fraud training and evaluation for a chosen classifier algorithm.
 
     Args:
         test_file (Path): Path to a YAML test file containing algorithm, data, and
@@ -224,7 +206,7 @@ def test_file(
         raise ValueError("Missing 'data' key in test file. Must be a dict.")
 
     classifier_config_raw = data.get("classifier")
-    if not classifier_config_raw:
+    if classifier_config_raw is None:
         raise ValueError("Missing 'classifier' key in test file. Must be a dict.")
 
     data_cfg = load_data_dict(data_config_raw, DataConfig)
@@ -242,7 +224,13 @@ def test_file(
     split = get_data_split(data_cfg)
     data_prep_seconds = time.perf_counter() - data_prep_start
 
-    validate_labels(split)
+    # validate that labels coming out of the loader are {-1, +1}
+    bad = split.y_test[~np.isin(split.y_test, [-1, 1])]
+    if len(bad):
+        raise AssertionError(
+            f"Classifiers here expect labels in {{-1, 1}}. Found: {bad}"
+        )
+
     LOGGER.info(
         "  %s train rows | %s test rows | %s features",
         split.n_train,
@@ -251,13 +239,11 @@ def test_file(
     )
 
     if dry_run:
-        LOGGER.info(
-            "--dry-run complete. Everything looks good - remove --dry-run to submit."
-        )
+        LOGGER.info("--dry-run complete. Everything looks good - remove --dry-run to submit.")
         LOGGER.info("done (%.1fs total)", time.time() - overall_start)
         return
 
-    # 4. Build the ensemble adapter and train
+    # 4. Build the adapter and train
     adapter = adapter_cls(classifier_cfg)
 
     warning = adapter.submission_warning()

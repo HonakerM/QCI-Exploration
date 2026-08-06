@@ -15,13 +15,13 @@ classifier against **QBoost** from QCi, plus file-based ensemble testing for
 QCI-Exploration/
 ├── README.md
 ├── requirements.txt          #
-├── xgboost_fraud.py          # Train/evaluate XGBoost for fraud
+├── xgboost_fraud.py          # Train/evaluate XGBoost from YAML test files
 ├── ensemble_fraud.py         # Train/evaluate pluggable ensemble classifiers from YAML test files
 ├── compare_results.py        # Compare saved results across runs
 └── common/
     ├── qci.py                 # QCi API client factory
     ├── logging.py              # Shared logging setup
-    └── binary_classification   # Shared binary classification libraries
+  └── binary_classification   # Shared binary classification libraries
 ```
 
 ## Installation
@@ -76,7 +76,40 @@ internally.
 ### XGBoost
 
 ```bash
-python3 xgboost_fraud.py --train-file "./data/mlg-ulb/train.csv" --test-file "./data/mlg-ulb/test.csv"
+python3 .\xgboost_fraud.py test-file .\tests\mlg-ulb\xgboost\default.yaml
+```
+
+That YAML fixture looks like this:
+
+```yaml
+algorithm: xgboost
+classifier: {}
+data:
+  additional_feature_names:
+  - Amount
+  - Time
+  class_name: Class
+  enforce_equal_samples: true
+  engineered_feature_names:
+  - Comp_Sum
+  - Comp_Min
+  - Comp_Max
+  - Comp_Avg
+  - Comp_Std
+  - Comp_Pos
+  - Comp_Neg
+  - Comp_Var
+  index_column: id
+  model_file: null
+  model_name_override: "xgboost 1k oversample"
+  non_fraud_sample_size: 1000
+  over_sample_percentage: 1.0
+  random_state: 42
+  should_over_sample: true
+  test_file: data\mlg-ulb\test.csv
+  test_size: 0.3
+  train_file: data\mlg-ulb\train.csv
+  v_feature_names: []
 ```
 
 ### File-based ensemble testing

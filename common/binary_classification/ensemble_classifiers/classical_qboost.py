@@ -4,7 +4,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-from common.binary_classification.ensemble_classifiers.base import (
+from common.binary_classification.base import (
     ClassifierAdapter,
     ClassifierConfig,
     register_classifier,
