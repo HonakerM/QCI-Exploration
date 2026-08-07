@@ -174,7 +174,7 @@ class ClassicalQBoostConfig(ClassifierConfig):
     weak_cls_strategy: str = "sequential"
     weak_cls_type: str = "knn"
     weak_cls_schedule: int = 1
-    include_smu_params: bool = True
+    weak_cls_params: dict | None = None
 
     def to_classifier_config(self) -> dict:
         """Converts the config into keyword arguments for QBoostClassifier.
@@ -182,33 +182,7 @@ class ClassicalQBoostConfig(ClassifierConfig):
         Returns:
             dict: A dictionary of hyperparameters suitable for QBoostClassifier(**kwargs).
         """
-        weak_cls_params = {}
-        if self.include_smu_params:
-            if self.weak_cls_type == "knn":
-                weak_cls_params = {
-                    "weights": "uniform",
-                    "n_neighbors": 15,
-                    "metric": "minkowski",
-                }
-            elif self.weak_cls_type == "lda":
-                weak_cls_params = {"solver": "lsqr", "shrinkage": "auto"}
-            elif self.weak_cls_type == "lg":
-                weak_cls_params = {
-                    "penalty": "l2",
-                    "solver": "lbfgs",
-                    "C": 10,
-                }
-            elif self.weak_cls_type == "xgb":
-                weak_cls_params = {
-                    "n_estimators": 100,
-                    "max_depth": 3,
-                    "learning_rate": 0.1,
-                    "subsample": 1.0,
-                    "colsample_bytree": 0.8,
-                    "min_child_weight": 1,
-                    "reg_lambda": 1.0,
-                    "reg_alpha": 0.0,
-                }
+        weak_cls_params = self.weak_cls_params or {}
         return {
             # Does notthing for classical
             "relaxation_schedule": self.relaxation_schedule,

@@ -1,0 +1,41 @@
+algorithm: classical_qboost
+classifier:
+    optimization_method: "L-BFGS-B"
+    relaxation_schedule: 2
+    num_samples: 1
+    lambda_coef: 0.0
+    weak_cls_strategy: "sequential"
+    weak_cls_type: "knn"
+    weak_cls_schedule: 2
+    weak_cls_params:
+        n_neighbors: 15
+        weights: "uniform"
+        metric: "minkowski"
+        p: 2
+        leaf_size: 30
+data:
+  additional_feature_names:
+  - Amount
+  - Time
+  class_name: Class
+  engineered_feature_names:
+  - Comp_Sum
+  - Comp_Min
+  - Comp_Max
+  - Comp_Avg
+  - Comp_Std
+  - Comp_Pos
+  - Comp_Neg
+  - Comp_Var
+  index_column: id
+  model_file: null
+  test_file: data\mlg-ulb\test.csv
+  train_file: data\mlg-ulb\train.csv
+  v_feature_names: []
+  non_fraud_sample_size: null
+  should_over_sample: true
+  over_sample_percentage: 1.0
+  enforce_equal_samples: false
+  test_size: 0.3
+  random_state: 42
+  model_name_override: "classical qboost knn - full pool"

@@ -19,7 +19,7 @@ class LDAConfig(ClassifierConfig):
     algorithm_name = "lda"
 
     solver: str = "lsqr"
-    shrinkage: str = "auto"
+    shrinkage: str | float | None = "auto"
     tol: float = 1e-4
 
     def to_classifier_config(self) -> dict:

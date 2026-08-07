@@ -1,0 +1,53 @@
+{
+  "model_name": "xgboost - heavy subsample",
+  "training_time_seconds": 3.715957700042054,
+  "timing": {
+    "data_prep": 2.9114637000020593,
+    "fit": 0.7885835000197403,
+    "predict": 0.015910500020254403
+  },
+  "fpr": [
+    0.0,
+    1.0
+  ],
+  "tpr": [
+    0.0,
+    1.0
+  ],
+  "auc": 0.5,
+  "log_loss": 0.6932154297828674,
+  "train_metrics": {
+    "split": "train",
+    "precision": 0.5,
+    "recall": 1.0,
+    "f1": 0.6666666666666666,
+    "accuracy": 0.5,
+    "confusion_matrix": [
+      [
+        0,
+        700
+      ],
+      [
+        0,
+        700
+      ]
+    ]
+  },
+  "test_metrics": {
+    "split": "test",
+    "precision": 0.3197278911564626,
+    "recall": 1.0,
+    "f1": 0.4845360824742268,
+    "accuracy": 0.3197278911564626,
+    "confusion_matrix": [
+      [
+        0,
+        300
+      ],
+      [
+        0,
+        141
+      ]
+    ]
+  }
+}

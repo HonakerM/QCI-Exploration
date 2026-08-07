@@ -1,13 +1,13 @@
 {
   "model_name": "classical lbfgs lda 1k oversample",
-  "training_time_seconds": 1.6947410999564454,
+  "training_time_seconds": 2.160916399996495,
   "timing": {
-    "data_prep": 1.5788002999906894,
+    "data_prep": 1.958123100019293,
     "fit": null,
-    "predict": 0.040289899974595755,
+    "predict": 0.0639212999958545,
     "adapter": {
-      "solve": 0.0019148999999742955,
-      "get_hamiltonian": 0.07373599999118596
+      "solve": 0.0035773999989032745,
+      "get_hamiltonian": 0.1352945999824442
     }
   },
   "fpr": [

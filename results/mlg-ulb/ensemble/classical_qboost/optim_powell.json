@@ -1,13 +1,13 @@
 {
   "model_name": "classical powell 1k oversample",
-  "training_time_seconds": 1.5278791000309866,
+  "training_time_seconds": 1.6678393999754917,
   "timing": {
-    "data_prep": 1.409711000014795,
+    "data_prep": 1.5006043999746908,
     "fit": null,
-    "predict": 0.0395252000016626,
+    "predict": 0.053867599985096604,
     "adapter": {
-      "solve": 0.0034346999891567975,
-      "get_hamiltonian": 0.07520820002537221
+      "solve": 0.003418700012844056,
+      "get_hamiltonian": 0.10994870000286028
     }
   },
   "fpr": [

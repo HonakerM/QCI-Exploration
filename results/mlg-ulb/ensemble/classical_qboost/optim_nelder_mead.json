@@ -1,13 +1,13 @@
 {
   "model_name": "classical nelder-mead 1k oversample",
-  "training_time_seconds": 1.5538626000052318,
+  "training_time_seconds": 1.7126726999995299,
   "timing": {
-    "data_prep": 1.4356219999899622,
+    "data_prep": 1.5221600999939255,
     "fit": null,
-    "predict": 0.03992480001761578,
+    "predict": 0.053597899997839704,
     "adapter": {
-      "solve": 0.0027199999894946814,
-      "get_hamiltonian": 0.07559580000815913
+      "solve": 0.006230500002857298,
+      "get_hamiltonian": 0.13068420000490732
     }
   },
   "fpr": [

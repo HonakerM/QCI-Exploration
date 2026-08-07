@@ -1,13 +1,13 @@
 {
   "model_name": "classical tnc 1k oversample",
-  "training_time_seconds": 1.6455271000158973,
+  "training_time_seconds": 2.2265024000080302,
   "timing": {
-    "data_prep": 1.5283300000010058,
+    "data_prep": 2.068429900013143,
     "fit": null,
-    "predict": 0.03919730000779964,
+    "predict": 0.04165089997695759,
     "adapter": {
-      "solve": 0.0028363000019453466,
-      "get_hamiltonian": 0.07516350000514649
+      "solve": 0.004225900018354878,
+      "get_hamiltonian": 0.11219569999957457
     }
   },
   "fpr": [

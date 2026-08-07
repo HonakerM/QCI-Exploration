@@ -1,13 +1,13 @@
 {
   "model_name": "classical lbfgs 5k oversample0.5",
-  "training_time_seconds": 1.8492405000142753,
+  "training_time_seconds": 2.5905241000291426,
   "timing": {
-    "data_prep": 1.6981962000136264,
+    "data_prep": 2.301538600004278,
     "fit": null,
-    "predict": 0.040407000022241846,
+    "predict": 0.0766291000181809,
     "adapter": {
-      "solve": 0.0034866999776568264,
-      "get_hamiltonian": 0.10715060000075027
+      "solve": 0.006798600021284074,
+      "get_hamiltonian": 0.20555779998539947
     }
   },
   "fpr": [

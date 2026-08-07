@@ -1,0 +1,42 @@
+algorithm: xgboost
+classifier:
+    n_estimators: 3093
+    min_child_weight: 96
+    max_depth: 12
+    learning_rate: 0.01
+    subsample: 0.95
+    colsample_bytree: 0.95
+    reg_lambda: 1.5
+    reg_alpha: 1.5
+    gamma: 1.5
+    max_bin: 512
+    random_state: 228
+    objective: "binary:logistic"
+    tree_method: "auto"
+    eval_metric: "auc"
+data:
+  additional_feature_names:
+  - Amount
+  - Time
+  class_name: Class
+  enforce_equal_samples: true
+  engineered_feature_names:
+  - Comp_Sum
+  - Comp_Min
+  - Comp_Max
+  - Comp_Avg
+  - Comp_Std
+  - Comp_Pos
+  - Comp_Neg
+  - Comp_Var
+  index_column: id
+  model_file: null
+  model_name_override: "xgboost - low lr"
+  non_fraud_sample_size: 1000
+  over_sample_percentage: 1.0
+  random_state: 42
+  should_over_sample: true
+  test_file: data\mlg-ulb\test.csv
+  test_size: 0.3
+  train_file: data\mlg-ulb\train.csv
+  v_feature_names: []

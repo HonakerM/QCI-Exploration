@@ -153,6 +153,8 @@ def test_folder(
         dry_run (bool): If True, only loads the test files and validates them without
             running any training. Defaults to False.
     """
+    load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
+    setup_logging()
     if suppress_warnings:
         global SUPPRESS_WARNINGS
         SUPPRESS_WARNINGS = True
@@ -167,7 +169,7 @@ def test_folder(
                 file,
             )
             continue
-        test_file(file, dry_run=dry_run, display_plots=display_plots)
+        test_file(file, dry_run=dry_run, display_plots=display_plots, _from_folder=True)
 
 
 @APP.command("test-file")
@@ -176,6 +178,7 @@ def test_file(
     dry_run: bool = False,
     display_plots: bool = True,
     save_plots: bool = False,
+    _from_folder: bool = typer.Option(default=False, expose_value=False, hidden=True),
 ):
     """Runs fraud training and evaluation for a chosen classifier algorithm.
 
@@ -189,8 +192,9 @@ def test_file(
         save_plots (bool): If True, saves ROC and metric comparison plots to the
             current working directory. Defaults to False.
     """
-    load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
-    setup_logging()
+    if not _from_folder:
+        load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
+        setup_logging()
 
     data = load_yaml(test_file)
 

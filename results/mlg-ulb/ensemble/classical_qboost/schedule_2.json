@@ -1,13 +1,13 @@
 {
   "model_name": "classical lg oversample1x schedule-2",
-  "training_time_seconds": 3.555799299996579,
+  "training_time_seconds": 4.380126099975314,
   "timing": {
-    "data_prep": 1.4158029000100214,
+    "data_prep": 1.4747226999897975,
     "fit": null,
-    "predict": 0.3738032999972347,
+    "predict": 0.4766832999885082,
     "adapter": {
-      "solve": 0.03631419999874197,
-      "get_hamiltonian": 1.729878899990581
+      "solve": 0.04271280000102706,
+      "get_hamiltonian": 2.386007299995981
     }
   },
   "fpr": [

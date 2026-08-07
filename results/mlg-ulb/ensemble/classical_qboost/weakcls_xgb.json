@@ -1,13 +1,13 @@
 {
   "model_name": "classical lbfgs xgb 1k oversample",
-  "training_time_seconds": 2.408270999992965,
+  "training_time_seconds": 3.066044300037902,
   "timing": {
-    "data_prep": 1.4955327000061516,
+    "data_prep": 1.9702998000138905,
     "fit": null,
-    "predict": 0.1056137999985367,
+    "predict": 0.11828600001172163,
     "adapter": {
-      "solve": 0.002334699995117262,
-      "get_hamiltonian": 0.8047897999931592
+      "solve": 0.002128599997377023,
+      "get_hamiltonian": 0.9753299000149127
     }
   },
   "fpr": [

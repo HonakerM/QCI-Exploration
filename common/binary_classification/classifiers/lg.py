@@ -18,11 +18,11 @@ class LogisticRegressionConfig(ClassifierConfig):
 
     algorithm_name = "logistic_regression"
 
-    penalty: str = "l2"
+    penalty: str | None = "l2"
     C: float = 0.5
     solver: str = "lbfgs"
     max_iter: int = 2000
-    class_weight: str = "balanced"
+    class_weight: str|None = "balanced"
     tol: float = 1e-4
     random_state: int = 228
 
