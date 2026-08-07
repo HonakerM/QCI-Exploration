@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - tight tol",
-  "training_time_seconds": 1.531871199986199,
+  "training_time_seconds": 2.3060048999614082,
   "timing": {
-    "data_prep": 1.5132566999818664,
-    "fit": 0.017251499986741692,
-    "predict": 0.0013630000175908208
+    "data_prep": 2.2822199999936856,
+    "fit": 0.02202999999281019,
+    "predict": 0.001754899974912405
   },
   "fpr": [
     0.0,

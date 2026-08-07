@@ -1,10 +1,10 @@
 {
   "model_name": "lda - auto shrink",
-  "training_time_seconds": 1.7820721000025515,
+  "training_time_seconds": 1.8988680999609642,
   "timing": {
-    "data_prep": 1.768967200012412,
-    "fit": 0.011081699980422854,
-    "predict": 0.0020232000097166747
+    "data_prep": 1.8829480999847874,
+    "fit": 0.013928800006397069,
+    "predict": 0.0019911999697797
   },
   "fpr": [
     0.0,

@@ -1,13 +1,13 @@
 {
   "model_name": "classical lbfgs no-smu-params 1k oversample",
-  "training_time_seconds": 2.4695239000138827,
+  "training_time_seconds": 2.0232052999781445,
   "timing": {
-    "data_prep": 2.2479580999934115,
+    "data_prep": 1.8097489000065252,
     "fit": null,
-    "predict": 0.0756114000105299,
+    "predict": 0.06565740000223741,
     "adapter": {
-      "solve": 0.004862500005401671,
-      "get_hamiltonian": 0.14109190000453964
+      "solve": 0.00763619999634102,
+      "get_hamiltonian": 0.14016279997304082
     }
   },
   "fpr": [

@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - unweighted",
-  "training_time_seconds": 3.471163699956378,
+  "training_time_seconds": 2.009842200030107,
   "timing": {
-    "data_prep": 3.458421499992255,
-    "fit": 0.011666899983538315,
-    "predict": 0.001075299980584532
+    "data_prep": 1.9957271000021137,
+    "fit": 0.012522200006060302,
+    "predict": 0.0015929000219330192
   },
   "fpr": [
     0.0,

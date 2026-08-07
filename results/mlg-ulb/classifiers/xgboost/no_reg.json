@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - no reg",
-  "training_time_seconds": 3.0682373000017833,
+  "training_time_seconds": 3.2600489000906236,
   "timing": {
-    "data_prep": 2.0890118000097573,
-    "fit": 0.9657166000106372,
-    "predict": 0.013508899981388822
+    "data_prep": 2.029862800030969,
+    "fit": 1.2161251000361517,
+    "predict": 0.014061000023502856
   },
   "fpr": [
     0.0,

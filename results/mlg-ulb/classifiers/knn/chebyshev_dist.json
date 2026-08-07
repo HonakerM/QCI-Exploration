@@ -1,10 +1,10 @@
 {
   "model_name": "knn - chebyshev dist",
-  "training_time_seconds": 1.8998666000552475,
+  "training_time_seconds": 2.0625763999996707,
   "timing": {
-    "data_prep": 1.8083945000253152,
-    "fit": 0.001933100022142753,
-    "predict": 0.08953900000778958
+    "data_prep": 2.006049300020095,
+    "fit": 0.002159999974537641,
+    "predict": 0.05436710000503808
   },
   "fpr": [
     0.0,

@@ -1,13 +1,13 @@
 {
   "model_name": "classical qboost knn - baseline",
-  "training_time_seconds": 9.350130999984685,
+  "training_time_seconds": 8.463248499960173,
   "timing": {
-    "data_prep": 4.3976305999967735,
+    "data_prep": 1.8929178999969736,
     "fit": null,
-    "predict": 3.2619865000015125,
+    "predict": 4.228849699953571,
     "adapter": {
-      "solve": 0.040984799998113886,
-      "get_hamiltonian": 1.6495290999882855
+      "solve": 0.03995609999401495,
+      "get_hamiltonian": 2.3015248000156134
     }
   },
   "fpr": [

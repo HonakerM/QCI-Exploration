@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - no penalty",
-  "training_time_seconds": 3.128280699980678,
+  "training_time_seconds": 2.0618125000037253,
   "timing": {
-    "data_prep": 3.1100278999947477,
-    "fit": 0.01694090000819415,
-    "predict": 0.001311899977736175
+    "data_prep": 2.0458705000346527,
+    "fit": 0.014828899991698563,
+    "predict": 0.0011130999773740768
   },
   "fpr": [
     0.0,

@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - high iter",
-  "training_time_seconds": 1.4773025999893434,
+  "training_time_seconds": 1.9400543000665493,
   "timing": {
-    "data_prep": 1.4629123999911826,
-    "fit": 0.013016100012464449,
-    "predict": 0.0013740999856963754
+    "data_prep": 1.9211208000197075,
+    "fit": 0.017094500013627112,
+    "predict": 0.0018390000332146883
   },
   "fpr": [
     0.0,

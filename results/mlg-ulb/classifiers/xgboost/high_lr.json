@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - high lr",
-  "training_time_seconds": 3.855866900004912,
+  "training_time_seconds": 2.9646596999955364,
   "timing": {
-    "data_prep": 2.8906943000038154,
-    "fit": 0.9486119999783114,
-    "predict": 0.016560600022785366
+    "data_prep": 2.1525876999949105,
+    "fit": 0.798158899997361,
+    "predict": 0.013913100003264844
   },
   "fpr": [
     0.0,

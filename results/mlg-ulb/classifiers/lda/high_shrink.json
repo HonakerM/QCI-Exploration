@@ -1,10 +1,10 @@
 {
   "model_name": "lda - high shrink",
-  "training_time_seconds": 1.5244300999911502,
+  "training_time_seconds": 2.0560117999557406,
   "timing": {
-    "data_prep": 1.5186502000142355,
-    "fit": 0.004583799978718162,
-    "predict": 0.001196099998196587
+    "data_prep": 2.049318699981086,
+    "fit": 0.005042299977503717,
+    "predict": 0.001650799997150898
   },
   "fpr": [
     0.0,

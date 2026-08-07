@@ -1,10 +1,10 @@
 {
   "model_name": "lda - loose tol",
-  "training_time_seconds": 1.5179419000050984,
+  "training_time_seconds": 1.9225624999962747,
   "timing": {
-    "data_prep": 1.508022499998333,
-    "fit": 0.008405600005062297,
-    "predict": 0.0015138000017032027
+    "data_prep": 1.9123359000077471,
+    "fit": 0.009106700017582625,
+    "predict": 0.0011198999709449708
   },
   "fpr": [
     0.0,

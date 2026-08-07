@@ -1,10 +1,10 @@
 {
   "model_name": "lda - tight tol",
-  "training_time_seconds": 1.4786883000051603,
+  "training_time_seconds": 1.8818252999335527,
   "timing": {
-    "data_prep": 1.4718696000054479,
-    "fit": 0.005336500005796552,
-    "predict": 0.0014821999939158559
+    "data_prep": 1.8720799999427982,
+    "fit": 0.008325000002514571,
+    "predict": 0.0014202999882400036
   },
   "fpr": [
     0.0,

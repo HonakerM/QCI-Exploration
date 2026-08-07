@@ -1,10 +1,10 @@
 {
   "model_name": "lda - svd solver",
-  "training_time_seconds": 1.5064358999952674,
+  "training_time_seconds": 2.0055227000266314,
   "timing": {
-    "data_prep": 1.499548899999354,
-    "fit": 0.005589299980783835,
-    "predict": 0.0012977000151295215
+    "data_prep": 1.9983803000068292,
+    "fit": 0.006156600022222847,
+    "predict": 0.0009857999975793064
   },
   "fpr": [
     0.0,

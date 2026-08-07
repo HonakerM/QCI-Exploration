@@ -1,10 +1,10 @@
 {
   "model_name": "lda - eigen solver",
-  "training_time_seconds": 2.9611406000040006,
+  "training_time_seconds": 1.8888349000480957,
   "timing": {
-    "data_prep": 2.954484699992463,
-    "fit": 0.004122299986192957,
-    "predict": 0.00253360002534464
+    "data_prep": 1.8825986000010744,
+    "fit": 0.004894700017757714,
+    "predict": 0.0013416000292636454
   },
   "fpr": [
     0.0,

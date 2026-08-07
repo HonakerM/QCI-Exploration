@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - few estimators",
-  "training_time_seconds": 3.0442374999984168,
+  "training_time_seconds": 2.22884359996533,
   "timing": {
-    "data_prep": 2.9884741000132635,
-    "fit": 0.0530739999958314,
-    "predict": 0.002689399989321828
+    "data_prep": 2.1791582999867387,
+    "fit": 0.04702920001000166,
+    "predict": 0.0026560999685898423
   },
   "fpr": [
     0.0,

@@ -1,13 +1,13 @@
 {
   "model_name": "classical slsqp 1k oversample",
-  "training_time_seconds": 1.7006645999790635,
+  "training_time_seconds": 1.8957378999330103,
   "timing": {
-    "data_prep": 1.534845599991968,
+    "data_prep": 1.7215671999729238,
     "fit": null,
-    "predict": 0.054335699998773634,
+    "predict": 0.052960800006985664,
     "adapter": {
-      "solve": 0.0031411999952979386,
-      "get_hamiltonian": 0.10834209999302402
+      "solve": 0.0038864999660290778,
+      "get_hamiltonian": 0.11732339998707175
     }
   },
   "fpr": [

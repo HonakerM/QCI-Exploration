@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - hist method",
-  "training_time_seconds": 4.482026099984068,
+  "training_time_seconds": 4.32058820000384,
   "timing": {
-    "data_prep": 2.6730998999846634,
-    "fit": 1.7940927000017837,
-    "predict": 0.014833499997621402
+    "data_prep": 2.2786978000076488,
+    "fit": 2.026907299994491,
+    "predict": 0.014983100001700222
   },
   "fpr": [
     0.0,

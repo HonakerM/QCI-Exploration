@@ -1,10 +1,10 @@
 {
   "model_name": "knn - few neighbors",
-  "training_time_seconds": 2.2385431000438984,
+  "training_time_seconds": 2.1507507999776863,
   "timing": {
-    "data_prep": 2.215437800012296,
-    "fit": 0.0027424000145401806,
-    "predict": 0.020362900017062202
+    "data_prep": 2.1385776000097394,
+    "fit": 0.0017970000044442713,
+    "predict": 0.010376199963502586
   },
   "fpr": [
     0.0,

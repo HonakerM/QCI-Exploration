@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - l2 penalty",
-  "training_time_seconds": 1.488355399982538,
+  "training_time_seconds": 2.26454810006544,
   "timing": {
-    "data_prep": 1.4759611999907065,
-    "fit": 0.011298899975372478,
-    "predict": 0.0010953000164590776
+    "data_prep": 2.2493602000176907,
+    "fit": 0.013288700021803379,
+    "predict": 0.0018992000259459019
   },
   "fpr": [
     0.0,

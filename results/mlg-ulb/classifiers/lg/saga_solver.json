@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - saga solver",
-  "training_time_seconds": 1.9011134000320453,
+  "training_time_seconds": 2.6444565000128932,
   "timing": {
-    "data_prep": 1.4802770000242162,
-    "fit": 0.419527600024594,
-    "predict": 0.001308799983235076
+    "data_prep": 2.0961150000221096,
+    "fit": 0.5464319000020623,
+    "predict": 0.001909599988721311
   },
   "fpr": [
     0.0,

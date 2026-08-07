@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - newton solver",
-  "training_time_seconds": 1.534393000009004,
+  "training_time_seconds": 2.046592100057751,
   "timing": {
-    "data_prep": 1.5251866999897175,
-    "fit": 0.00802000000840053,
-    "predict": 0.0011863000108860433
+    "data_prep": 2.0331537000020035,
+    "fit": 0.011600900033954531,
+    "predict": 0.0018375000217929482
   },
   "fpr": [
     0.0,

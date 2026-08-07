@@ -1,10 +1,10 @@
 {
   "model_name": "lda - eigen shrink",
-  "training_time_seconds": 1.9155675999936648,
+  "training_time_seconds": 1.9436988001107238,
   "timing": {
-    "data_prep": 1.8969366000092123,
-    "fit": 0.016670499986503273,
-    "predict": 0.0019604999979492277
+    "data_prep": 1.9290487000253052,
+    "fit": 0.013091300032101572,
+    "predict": 0.0015588000533170998
   },
   "fpr": [
     0.0,

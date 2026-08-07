@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - deep trees",
-  "training_time_seconds": 4.305838899977971,
+  "training_time_seconds": 3.3215384999639355,
   "timing": {
-    "data_prep": 3.3033170999842696,
-    "fit": 0.9844929999962915,
-    "predict": 0.018028799997409806
+    "data_prep": 2.3701786000165157,
+    "fit": 0.9308239999809302,
+    "predict": 0.020535899966489524
   },
   "fpr": [
     0.0,

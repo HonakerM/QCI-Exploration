@@ -1,10 +1,10 @@
 {
   "model_name": "lda - lsqr solver",
-  "training_time_seconds": 1.5082428000168875,
+  "training_time_seconds": 1.933856199902948,
   "timing": {
-    "data_prep": 1.50313530000858,
-    "fit": 0.003828299988526851,
-    "predict": 0.0012792000197805464
+    "data_prep": 1.9295936999842525,
+    "fit": 0.0030737999477423728,
+    "predict": 0.0011886999709531665
   },
   "fpr": [
     0.0,

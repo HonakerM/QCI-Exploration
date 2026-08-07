@@ -1,10 +1,10 @@
 {
   "model_name": "lda - low shrink",
-  "training_time_seconds": 1.4840574000263587,
+  "training_time_seconds": 1.9841470999526791,
   "timing": {
-    "data_prep": 1.479661000019405,
-    "fit": 0.003135899984044954,
-    "predict": 0.0012605000229086727
+    "data_prep": 1.9786481999908574,
+    "fit": 0.003922000003512949,
+    "predict": 0.0015768999583087862
   },
   "fpr": [
     0.0,

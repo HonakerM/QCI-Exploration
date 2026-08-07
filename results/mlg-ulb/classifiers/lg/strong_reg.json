@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - strong reg",
-  "training_time_seconds": 1.5279826000041794,
+  "training_time_seconds": 2.0554116000421345,
   "timing": {
-    "data_prep": 1.5219998999964446,
-    "fit": 0.004928500013193116,
-    "predict": 0.0010541999945417047
+    "data_prep": 2.0488662000279874,
+    "fit": 0.005123700015246868,
+    "predict": 0.0014216999989002943
   },
   "fpr": [
     0.0,

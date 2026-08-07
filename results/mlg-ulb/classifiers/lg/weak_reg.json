@@ -1,10 +1,10 @@
 {
   "model_name": "logistic regression - weak reg",
-  "training_time_seconds": 2.4683932999905664,
+  "training_time_seconds": 2.167548199999146,
   "timing": {
-    "data_prep": 2.4390162999916356,
-    "fit": 0.027293299994198605,
-    "predict": 0.0020837000047322363
+    "data_prep": 2.143216600001324,
+    "fit": 0.022602899989578873,
+    "predict": 0.0017287000082433224
   },
   "fpr": [
     0.0,

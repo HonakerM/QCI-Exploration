@@ -1,13 +1,13 @@
 {
   "model_name": "classical lbfgs knn 1k oversample",
-  "training_time_seconds": 2.470378799975151,
+  "training_time_seconds": 2.5607191000017338,
   "timing": {
-    "data_prep": 2.0636126000026707,
+    "data_prep": 2.205233299988322,
     "fit": null,
-    "predict": 0.2747388999850955,
+    "predict": 0.22866029996657744,
     "adapter": {
-      "solve": 0.003037899994524196,
-      "get_hamiltonian": 0.12898939999286085
+      "solve": 0.003052600019145757,
+      "get_hamiltonian": 0.12377290002768859
     }
   },
   "fpr": [

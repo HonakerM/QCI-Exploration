@@ -1,10 +1,10 @@
 {
   "model_name": "knn - brute force",
-  "training_time_seconds": 2.215979399974458,
+  "training_time_seconds": 1.8901601000106893,
   "timing": {
-    "data_prep": 2.1827149000018835,
-    "fit": 0.002808999997796491,
-    "predict": 0.030455499974777922
+    "data_prep": 1.8736801999621093,
+    "fit": 0.001784800027962774,
+    "predict": 0.014695100020617247
   },
   "fpr": [
     0.0,

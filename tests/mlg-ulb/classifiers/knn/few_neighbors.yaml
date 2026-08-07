@@ -8,11 +8,16 @@ classifier:
     metric: "minkowski"
     n_jobs: -1
 data:
-  additional_feature_names:
-  - Amount
-  - Time
+  # --- paths ---
+  train_file: data\mlg-ulb\train.csv
+  test_file: data\mlg-ulb\test.csv
+  model_file: null
+  model_name_override: "knn - few neighbors"
+  index_column: id
   class_name: Class
-  enforce_equal_samples: true
+
+  # --- feature selection ---
+  v_feature_names: []
   engineered_feature_names:
   - Comp_Sum
   - Comp_Min
@@ -22,14 +27,36 @@ data:
   - Comp_Pos
   - Comp_Neg
   - Comp_Var
-  index_column: id
-  model_file: null
-  model_name_override: "knn - few neighbors"
-  non_fraud_sample_size: 1000
-  over_sample_percentage: 1.0
-  random_state: 42
+  additional_feature_names:
+  - Amount
+  - Time
+
+  # --- sampling / class balance ---
+  enforce_equal_samples: true
+  max_non_fraud_samples: 1000
+  max_fraud_samples: null
+  class_balance_ratio: null
+  max_total_samples: null
+
+  # --- oversampling ---
   should_over_sample: true
-  test_file: data\mlg-ulb\test.csv
+  oversample_method: "smote"
+  oversample_ratio: 1.0
+
+  # --- split ---
   test_size: 0.3
-  train_file: data\mlg-ulb\train.csv
-  v_feature_names: []
+  split_method: "random"
+  time_column: "Time"
+  preserve_natural_test_distribution: false
+
+  # --- data quality ---
+  drop_duplicates: false
+  log_transform_amount: false
+  amount_column: "Amount"
+  feature_scaling: "none"
+
+  # --- reproducibility ---
+  random_state: 42
+  sample_random_state: null
+  split_random_state: null
+  oversample_random_state: null

@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - shallow trees",
-  "training_time_seconds": 2.6766618999827188,
+  "training_time_seconds": 2.988399199966807,
   "timing": {
-    "data_prep": 1.8078825999982655,
-    "fit": 0.8577330999833066,
-    "predict": 0.011046200001146644
+    "data_prep": 2.026934099965729,
+    "fit": 0.94581190001918,
+    "predict": 0.01565319998189807
   },
   "fpr": [
     0.0,

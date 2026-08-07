@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - strong reg",
-  "training_time_seconds": 4.213808300002711,
+  "training_time_seconds": 3.1384877000236884,
   "timing": {
-    "data_prep": 2.688830999977654,
-    "fit": 1.5069882000098005,
-    "predict": 0.017989100015256554
+    "data_prep": 2.192827999999281,
+    "fit": 0.9325376000488177,
+    "predict": 0.013122099975589663
   },
   "fpr": [
     0.0,
