@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 import numpy as np
 from dotenv import load_dotenv
-from sklearn.metrics import log_loss, roc_auc_score, roc_curve
+from sklearn.metrics import auc, log_loss, precision_recall_curve, roc_auc_score, roc_curve
 import typer
 
 from common.binary_classification.ensemble_classifiers import *
@@ -96,9 +96,18 @@ def train(
         pos_label=_POS_LABEL,
     )
 
-    auc = float(roc_auc_score(split.y_test, y_test_probs))
+    auc_score = float(roc_auc_score(split.y_test, y_test_probs))
     logloss = float(log_loss(split.y_test, y_test_probs))
     fpr, tpr, _ = roc_curve(split.y_test, y_test_probs)
+
+    # Precision-Recall: compute and guard against degenerate cases
+    pr_precision, pr_recall, _ = precision_recall_curve(split.y_test, y_test_probs)
+    auc_pr = float(auc(pr_recall, pr_precision)) if pr_precision.size and pr_recall.size else 0.0
+
+    # Log diagnostic info if PR curve is empty
+    if pr_precision.size == 0 or pr_recall.size == 0:
+        LOGGER.warning("PR arrays empty: y_test_bin unique=%s, y_test_probs unique head=%s", np.unique(y_test_bin), np.unique(y_test_probs)[:5])
+
 
     adapter_timing = adapter.get_train_timing()
     if adapter_timing is not None:
@@ -120,10 +129,13 @@ def train(
         ),
         fpr=fpr,
         tpr=tpr,
-        auc=auc,
+        auc=auc_score,
         log_loss=logloss,
         train_metrics=train_metrics,
         test_metrics=test_metrics,
+        pr_precision=pr_precision,
+        pr_recall=pr_recall,
+        auc_pr=auc_pr,
     )
 
 

@@ -505,6 +505,11 @@ class ModelResults:
 
     train_metrics: ClassificationMetrics
     test_metrics: ClassificationMetrics
+
+    pr_precision: np.ndarray = field(default_factory=lambda: np.asarray([]))
+    pr_recall: np.ndarray = field(default_factory=lambda: np.asarray([]))
+    auc_pr: float = 0.0
+
     timing: TimingInfo = field(default_factory=TimingInfo)
 
     @property
@@ -526,6 +531,9 @@ class ModelResults:
             "fpr": self.fpr.tolist(),
             "tpr": self.tpr.tolist(),
             "auc": self.auc,
+            "pr_precision": self.pr_precision.tolist(),
+            "pr_recall": self.pr_recall.tolist(),
+            "auc_pr": self.auc_pr,
             "log_loss": self.log_loss,
             "train_metrics": {
                 "split": self.train_metrics.split,
@@ -576,6 +584,9 @@ class ModelResults:
             fpr=np.asarray(data["fpr"], dtype=float),
             tpr=np.asarray(data["tpr"], dtype=float),
             auc=float(data["auc"]),
+            pr_precision=np.asarray(data.get("pr_precision", []), dtype=float),
+            pr_recall=np.asarray(data.get("pr_recall", []), dtype=float),
+            auc_pr=float(data.get("auc_pr", 0.0)),
             log_loss=float(data["log_loss"]),
             train_metrics=ClassificationMetrics(
                 split=data["train_metrics"]["split"],

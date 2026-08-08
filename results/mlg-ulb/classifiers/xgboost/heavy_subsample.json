@@ -1,10 +1,10 @@
 {
   "model_name": "xgboost - heavy subsample",
-  "training_time_seconds": 2.94252460001735,
+  "training_time_seconds": 3.059112199989613,
   "timing": {
-    "data_prep": 2.109814900031779,
-    "fit": 0.8186393000069074,
-    "predict": 0.014070399978663772
+    "data_prep": 2.3815375000122003,
+    "fit": 0.6650943999993615,
+    "predict": 0.012480299978051335
   },
   "fpr": [
     0.0,
@@ -15,6 +15,15 @@
     1.0
   ],
   "auc": 0.5,
+  "pr_precision": [
+    0.3197278911564626,
+    1.0
+  ],
+  "pr_recall": [
+    1.0,
+    0.0
+  ],
+  "auc_pr": 0.6598639455782314,
   "log_loss": 0.6932154297828674,
   "train_metrics": {
     "split": "train",

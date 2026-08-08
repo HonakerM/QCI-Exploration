@@ -5,6 +5,8 @@ import re
 
 from matplotlib import colormaps
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 
 from .data_types import ModelResults
 
@@ -35,7 +37,7 @@ def plot_roc_curves(
             r.tpr,
             linewidth=2,
             color=color,
-            label=f"{r.model_name} (AUC = {r.auc:.4f})",
+            label=f"{r.model_name} (AUC = {r.auc:.4f}, AP = {getattr(r, 'auc_pr', 0.0):.4f})",
         )
 
     ax.plot([0, 1], [0, 1], "k--", linewidth=1, label="Random (AUC = 0.5000)")
@@ -50,8 +52,38 @@ def plot_roc_curves(
     )
     ax.legend(loc="lower right", fontsize=11)
     ax.grid(True, alpha=0.3)
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
+    ax.set_xlim((0.0, 1.0))
+    ax.set_ylim((0.0, 1.05))
+    plt.tight_layout()
+    _save_or_show(fig, save_path)
+
+
+def plot_pr_curves(
+    results: list[ModelResults],
+    save_path: Path | None = None,
+) -> None:
+    """Plots overlaid Precision-Recall curves for every ModelResults in results."""
+    results = sorted(results, key=lambda r: r.auc_pr if hasattr(r, 'auc_pr') else 0.0, reverse=True)
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    for r, color in zip(results, _get_colors(len(results))):
+        precision = getattr(r, "pr_precision", None)
+        recall = getattr(r, "pr_recall", None)
+        if precision is None or recall is None or len(precision) == 0:
+            continue
+        ax.plot(recall, precision, linewidth=2, color=color, label=f"{r.model_name} (AP = {getattr(r, 'auc_pr', 0.0):.4f})")
+
+    ax.set_xlabel("Recall", fontsize=12)
+    ax.set_ylabel("Precision", fontsize=12)
+    ax.set_title(
+        "Precision-Recall Curves: " + " vs ".join(r.model_name for r in results) + "\n Fraud Detection",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.legend(loc="lower left", fontsize=11)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim((0.0, 1.0))
+    ax.set_ylim((0.0, 1.05))
     plt.tight_layout()
     _save_or_show(fig, save_path)
 
@@ -268,7 +300,7 @@ def _wrap_label(label: str, width: int) -> str:
 
 
 def _bar_chart(
-    ax: plt.Axes,
+    ax: Axes,
     names: list[str],
     values: list[float],
     colors: list[str],
@@ -277,25 +309,15 @@ def _bar_chart(
     ylim: tuple | None,
     label_offset: float,
 ) -> None:
-    """Draws a single labeled bar chart onto the given axes.
-
-    Args:
-        ax (plt.Axes): Matplotlib axes to draw onto.
-        names (list[str]): Bar labels, one per model.
-        values (list[float]): Bar heights, one per model.
-        colors (list[str]): Bar colors, one per model.
-        ylabel (str): Y-axis label.
-        title (str): Chart title.
-        ylim (tuple | None): Optional (min, max) y-axis limits.
-        label_offset (float): Vertical offset used to place the value label above
-            each bar.
-    """
+    """Draws a single labeled bar chart onto the given axes."""
     smallest_word_size = min(
         max(len(word) for name in names for word in re.split(r"[ ()/\\]", name)), 5
     )
     names = [_wrap_label(name, smallest_word_size) for name in names]
     ranked_tuples = sorted(zip(values, names, colors), reverse=True)
-    values, names, colors = zip(*ranked_tuples)
+    values = [t[0] for t in ranked_tuples]
+    names = [t[1] for t in ranked_tuples]
+    colors = [t[2] for t in ranked_tuples]
 
     spacing = 10
     scaled_names = [i * spacing for i in range(len(names))]
@@ -323,47 +345,10 @@ def _bar_chart(
         )
 
 
-def _bar_chart(
-    ax: plt.Axes,
-    names: list[str],
-    values: list[float],
-    colors: list[str],
-    ylabel: str,
-    title: str,
-    ylim: tuple | None,
-    label_offset: float,
-) -> None:
-    ranked_tuples = sorted(zip(values, names, colors), reverse=True)
-    values, names, colors = zip(*ranked_tuples)
-
-    spacing = 10
-    scaled_names = [i * spacing for i in range(len(names))]
-
-    bars = ax.bar(
-        scaled_names, values, color=colors, alpha=0.7, edgecolor="black", linewidth=1.5
-    )
-
-    ax.set_xticks(scaled_names)
-    ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
-    ax.set_ylabel(ylabel, fontsize=12)
-    ax.set_title(title, fontsize=14, fontweight="bold")
-    if ylim:
-        ax.set_ylim(ylim)
-    ax.grid(axis="y", alpha=0.3)
-    for bar, val in zip(bars, values):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            val + label_offset,
-            f"{val:.4f}",
-            ha="center",
-            va="bottom",
-            fontsize=10,
-            fontweight="bold",
-            rotation=90,
-        )
 
 
-def _save_or_show(fig: plt.Figure, save_path: Path | None) -> None:
+
+def _save_or_show(fig: Figure, save_path: Path | None) -> None:
     """Saves the figure to disk, or shows it interactively.
 
     Args:

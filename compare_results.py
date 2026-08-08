@@ -33,6 +33,7 @@ def save_results_csv(results: list[ModelResults], path: Path) -> None:
     base_fields = [
         "model_name",
         "auc",
+        "auc_pr",
         "log_loss",
         "test_precision",
         "test_recall",
@@ -63,6 +64,7 @@ def save_results_csv(results: list[ModelResults], path: Path) -> None:
             row: dict[str, object] = {
                 "model_name": r.model_name,
                 "auc": r.auc,
+                "auc_pr": getattr(r, "auc_pr", 0.0),
                 "log_loss": r.log_loss,
                 "test_precision": r.test_metrics.precision,
                 "test_recall": r.test_metrics.recall,
@@ -89,7 +91,6 @@ def main(
         help="Paths to saved ModelResults JSON files or folders containing JSON files",
     ),
     save_file: Path | None = None,
-    csv_file: Path | None = None,
     display: bool = True,
 ):
     """Loads results JSONs and plots ROC curves, metrics, and timing comparisons.
@@ -115,7 +116,8 @@ def main(
     for r in results:
         print_results(r)
 
-    if csv_file:
+    if save_file:
+        csv_file = save_file.parent / (save_file.stem + ".csv")
         save_results_csv(results, csv_file)
 
     roc_path = None
@@ -129,6 +131,13 @@ def main(
 
     if display or save_file:
         plot_roc_curves(results, save_path=roc_path)
+        try:
+            from common.binary_classification.visualization import plot_pr_curves
+
+            plot_pr_curves(results, save_path=save_file.parent / (save_file.stem + "_pr.png") if save_file else None)
+        except Exception:
+            # Optional PR plotting; ignore if unavailable
+            pass
         plot_metric_comparison(results, save_path=metric_path)
         plot_timing_comparison(results, save_path=timing_path)
 

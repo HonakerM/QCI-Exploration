@@ -12,12 +12,12 @@ from common.binary_classification.base import (
 
 import time
 
-from scipy.optimize import minimize
+from qiskit_optimization import QuadraticProgram
 
 from eqc_models.ml.classifierqboost import QBoostClassifier
 
 
-class ClassicalQBoostClassifier(QBoostClassifier):
+class QiskitQBoostClassifier(QBoostClassifier):
     """QBoost with the Dirac-3 solve step replaced by scipy.optimize (L-BFGS-B).
 
     `get_hamiltonian()` and `set_model()` are inherited unchanged, so
