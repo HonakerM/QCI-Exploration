@@ -6,6 +6,10 @@ python-dotenv>=1
 qci-client>=5
 # QCI models and base config
 eqc_models>=0.15
+# IBM Qiskit models
+qiskit_ibm_runtime>=0.48
+qiskit-optimization>=0.7
+qiskit-aer>=0.17.2
 # SMOTE and oversampling
 imbalanced-learn>=0.14
 # visualization

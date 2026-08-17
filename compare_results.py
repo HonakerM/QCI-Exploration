@@ -32,7 +32,7 @@ def save_results_csv(results: list[ModelResults], path: Path) -> None:
     """
     base_fields = [
         "model_name",
-        "auc",
+        "auc_roc",
         "auc_pr",
         "log_loss",
         "test_precision",
@@ -63,7 +63,7 @@ def save_results_csv(results: list[ModelResults], path: Path) -> None:
         for r in results:
             row: dict[str, object] = {
                 "model_name": r.model_name,
-                "auc": r.auc,
+                "auc_roc": r.auc,
                 "auc_pr": getattr(r, "auc_pr", 0.0),
                 "log_loss": r.log_loss,
                 "test_precision": r.test_metrics.precision,

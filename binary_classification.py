@@ -32,6 +32,7 @@ from common.binary_classification.data_types import (
 from common.binary_classification.evaluation import compute_metrics, print_results
 from common.binary_classification.visualization import (
     plot_metric_comparison,
+    plot_pr_curves,
     plot_roc_curves,
     plot_timing_comparison,
 )
@@ -283,6 +284,7 @@ def test_file(
     # 5. Visualize
     if display_plots:
         plot_roc_curves([results])
+        plot_pr_curves([results])
         plot_metric_comparison([results])
         plot_timing_comparison([results])
     if save_plots:

@@ -1,0 +1,53 @@
+algorithm: lda
+classifier:
+    solver: "lsqr"
+    shrinkage: "auto"
+    tol: 0.0001
+data:
+  train_file: data\mlg-ulb\train.csv
+  test_file: data\mlg-ulb\test.csv
+  model_file: null
+  model_name_override: "lda auto shrink - random split, natural test dist"
+  index_column: id
+  class_name: Class
+
+  v_feature_names: []
+  engineered_feature_names:
+  - Comp_Sum
+  - Comp_Min
+  - Comp_Max
+  - Comp_Avg
+  - Comp_Std
+  - Comp_Pos
+  - Comp_Neg
+  - Comp_Var
+  additional_feature_names:
+  - Amount
+  - Time
+
+  # --- sampling / class balance: OFF, use full natural dataset ---
+  enforce_equal_samples: false
+  max_non_fraud_samples: null
+  max_fraud_samples: null
+  class_balance_ratio: null
+  max_total_samples: null
+
+  # --- oversampling: train fold only, matches paper ---
+  should_over_sample: true
+  oversample_method: "smote"
+  oversample_ratio: 1.0
+
+  # --- split: random 70/30, test fold kept natural ---
+  test_size: 0.3
+  split_method: "random"
+  preserve_natural_test_distribution: true
+
+  # --- data quality / scaling: match paper's [0,1] scaling ---
+  drop_duplicates: false
+  log_transform_amount: false
+  feature_scaling: "minmax"
+
+  random_state: 42
+  sample_random_state: null
+  split_random_state: null
+  oversample_random_state: null

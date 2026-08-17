@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "QCI Single File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/binary_classification.py",
+            "args": [
+                "test-file",
+                "--display-plots",
+                "${workspaceFolder}/tests/mlg-ulb/ensemble/qiskit/weakcls_knn.yaml"
+            ],
+            "console": "internalConsole"
+        }
+    ]
+}

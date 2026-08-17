@@ -3,6 +3,11 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+from qiskit.primitives import StatevectorSampler
+from qiskit_optimization.algorithms import MinimumEigenOptimizer
+from qiskit_optimization.minimum_eigensolvers import QAOA, NumPyMinimumEigensolver
+from qiskit_optimization.optimizers import COBYLA
+from qiskit_aer.primitives import SamplerV2
 
 from common.binary_classification.base import (
     ClassifierAdapter,
@@ -79,16 +84,12 @@ class QiskitQBoostClassifier(QBoostClassifier):
 
     def __init__(
         self,
-        max_iter=1000,
-        tol=1e-8,
-        method: str | None = None,
+        classical: bool,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.max_iter = max_iter
-        self.tol = tol
-        self.method = method
         self.minimize_elapsed = None
+        self.classical = classical
 
     def solve(self):  # type: ignore[override]
         """Classically solves the bounded QUBO relaxation via L-BFGS-B.
@@ -109,49 +110,47 @@ class QiskitQBoostClassifier(QBoostClassifier):
         """
         J = self._J
         C = np.asarray(self._C, dtype=np.float64).reshape(-1)
-        J.shape[0]
 
-        bounds = [(0.0, float(ub)) for ub in np.asarray(self.upper_bound).reshape(-1)]
+        qp = QuadraticProgram()
 
-        def objective(x):
-            # x'Jx + C'x, matching the QUBO relaxation Dirac-3 would anneal.
-            Jx = J @ x
-            value = x @ Jx + C @ x
-            grad = 2.0 * Jx + C
-            return value, grad
+        n = J.shape[0]
 
-        # Start at the midpoint of each variable's box constraint.
-        x0 = np.asarray(self.upper_bound, dtype=np.float64).reshape(-1) / 2.0
+        for i in range(n):
+            qp.binary_var(name=f"x_{i}")
 
-        t0 = time.perf_counter()
-        result = minimize(
-            objective,
-            x0,
-            method=self.method,
-            jac=True,
-            bounds=bounds,
-            options={"maxiter": self.max_iter, "ftol": self.tol},
+        qp.minimize(
+            quadratic=J,
+            linear=C,
         )
-        elapsed = time.perf_counter() - t0
 
-        sol = result.x
+        
+        if self.classical:
+            mes = NumPyMinimumEigensolver()
+        else:
+            mes = QAOA(
+                        sampler=StatevectorSampler(seed=123),
+                        optimizer=COBYLA(),
+                        reps=2,
+                    )
+            
+        optimizer = MinimumEigenOptimizer(mes)
 
-        self.minimize_elapsed = elapsed
+        result = optimizer.solve(qp)
+
+        x = np.asarray(result.x, dtype=int)
 
         response = {
-            "solver": f"scipy.optimize.minimize ({self.method})",
-            "success": bool(result.success),
-            "message": str(result.message),
-            "n_iter": int(result.nit),
-            "final_objective": float(result.fun),
-            "solve_time_seconds": elapsed,
+            "solver": f"qiskit qubo",
+            "success": True,
+            "n_iter": 1,
+            "solve_time_seconds": 1,
         }
 
-        return sol, response
+        return x, response
 
 
 @dataclass
-class ClassicalQBoostConfig(ClassifierConfig):
+class QiskitQBoostConfig(ClassifierConfig):
     """Hyperparameters for the QBoostClassifier running on QCi Dirac-3.
 
     Attributes:
@@ -164,8 +163,8 @@ class ClassicalQBoostConfig(ClassifierConfig):
             classifiers).
     """
 
-    algorithm_name = "classical_qboost"
-    optimization_method: str = "L-BFGS-B"
+    algorithm_name = "qiskit"
+    classical: bool = False
 
     relaxation_schedule: int = 2
     num_samples: int = 1
@@ -184,6 +183,7 @@ class ClassicalQBoostConfig(ClassifierConfig):
         """
         weak_cls_params = self.weak_cls_params or {}
         return {
+            "classical": self.classical,
             # Does notthing for classical
             "relaxation_schedule": self.relaxation_schedule,
             "num_samples": self.num_samples,
@@ -197,7 +197,7 @@ class ClassicalQBoostConfig(ClassifierConfig):
     @property
     def display_name(self) -> str:
         """Short name identifying this classifier variant."""
-        return f"Classical QBoost ({self.weak_cls_type} - {self.optimization_method})"
+        return f"Qiskit QBoost"
 
 
 # ---------------------------------------------------------------------------
@@ -206,12 +206,12 @@ class ClassicalQBoostConfig(ClassifierConfig):
 
 
 @register_classifier
-class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
+class QiskitQBoostAdapter(ClassifierAdapter[QiskitQBoostConfig]):
     """Adapts eqc_models' QBoostClassifier (QCi Dirac-3) to ClassifierAdapter."""
 
-    def __init__(self, config: ClassicalQBoostConfig):
+    def __init__(self, config: QiskitQBoostConfig):
         super().__init__(config)
-        self.model = ClassicalQBoostClassifier(**config.to_classifier_config())
+        self.model = QiskitQBoostClassifier(**config.to_classifier_config())
 
         og_hamiltonian = self.model.get_hamiltonian
 
