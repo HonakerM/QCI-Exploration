@@ -1,4 +1,4 @@
-"""Shared metric computation used by both fraud scripts."""
+"""Compute classification metrics for each model output."""
 
 import numpy as np
 from sklearn.metrics import (
@@ -18,18 +18,17 @@ def compute_metrics(
     labels: list[int],
     pos_label: int,
 ) -> ClassificationMetrics:
-    """Computes binary classification metrics for one data split.
+    """Compute the summary metrics for one split of the label predictions.
 
     Args:
         y_true (np.ndarray): Ground-truth labels.
-        y_pred (np.ndarray): Hard predicted labels (not probabilities).
-        split (str): Name of the split these metrics belong to, e.g. "train" or
-            "test", stored on the returned dataclass.
-        labels (list[int]): Ordered label list, e.g. [-1, 1] or [0, 1].
-        pos_label (int): The label treated as the positive (fraud) class.
+        y_pred (np.ndarray): Predicted labels for the same rows.
+        split (str): Split name, such as "train" or "test".
+        labels (list[int]): Ordered class labels to score.
+        pos_label (int): Positive-class label used for precision and recall.
 
     Returns:
-        ClassificationMetrics: The computed precision, recall, F1, accuracy, and confusion matrix.
+        ClassificationMetrics: Precision, recall, F1, accuracy, and confusion matrix.
     """
     precision = precision_score(y_true, y_pred, labels=labels, pos_label=pos_label)
     recall = recall_score(y_true, y_pred, labels=labels, pos_label=pos_label)
@@ -52,12 +51,9 @@ def compute_metrics(
 
 
 def print_results(results: ModelResults):
-    """Pretty-prints a ModelResults summary to stdout.
+    """Print a readable summary of a model's training and evaluation output.
 
     Args:
-        results (ModelResults): The model results to print.
-
-    Returns:
-        None.
+        results (ModelResults): Result bundle to display.
     """
     print(results.summary())

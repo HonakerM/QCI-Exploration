@@ -1,4 +1,4 @@
-"""Linear Discriminant Analysis classifier adapter for fraud detection."""
+"""Wrap the scikit-learn LDA model in the shared adapter interface."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,7 +14,14 @@ from common.binary_classification.base import ClassifierAdapter, ClassifierConfi
 
 @dataclass
 class LDAConfig(ClassifierConfig):
-    """Hyperparameters for the Linear Discriminant Analysis classifier."""
+    """Store the configuration for the linear discriminant analysis model.
+
+    Attributes:
+        algorithm_name (str): Registry key used to resolve this adapter.
+        solver (str): LDA solver to use.
+        shrinkage (str | float | None): Shrinkage regularization for the covariance estimate.
+        tol (float): Convergence tolerance for the solver.
+    """
 
     algorithm_name = "lda"
 
@@ -23,6 +30,11 @@ class LDAConfig(ClassifierConfig):
     tol: float = 1e-4
 
     def to_classifier_config(self) -> dict:
+        """Convert the config into sklearn LinearDiscriminantAnalysis arguments.
+
+        Returns:
+            dict: Keyword arguments for the sklearn model.
+        """
         return {
             "solver": self.solver,
             "shrinkage": self.shrinkage,
@@ -31,27 +43,24 @@ class LDAConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
+        """Return the user-facing LDA label.
+
+        Returns:
+            str: Display name for the model.
+        """
         return "Linear Discriminant Analysis"
 
 
 @register_classifier
 class LDAAdapter(ClassifierAdapter[LDAConfig]):
-    """Adapts LinearDiscriminantAnalysis to the common classifier interface.
-
-    LDA is a lightweight generative linear baseline: it models each class
-    as a Gaussian with a shared covariance matrix, which makes it very
-    cheap to train and score and gives it a useful, different bias than
-    the discriminative models (Logistic Regression) and tree ensembles
-    (Random Forest, XGBoost, LightGBM) already in this suite. `solver=
-    "lsqr"` with `shrinkage="auto"` (Ledoit-Wolf shrinkage) regularizes
-    the covariance estimate, which matters here because fraud is rare and
-    the covariance for the minority class would otherwise be estimated
-    from very few samples. As with KNN, LDA is scale-sensitive, so it's
-    wrapped in a StandardScaler pipeline. Note: shrinkage is only
-    supported by the "lsqr" and "eigen" solvers, not "svd".
-    """
+    """Wrap sklearn LDA in the shared binary-classification adapter API."""
 
     def __init__(self, config: LDAConfig):
+        """Create the scaled LDA pipeline.
+
+        Args:
+            config (LDAConfig): LDA hyperparameters.
+        """
         super().__init__(config)
         self.model = make_pipeline(
             StandardScaler(),

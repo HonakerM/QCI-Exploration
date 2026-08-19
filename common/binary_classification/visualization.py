@@ -1,4 +1,4 @@
-"""Plotting helpers consumed by both fraud scripts."""
+"""Create ROC, PR, metric, and timing charts for saved model results."""
 
 from pathlib import Path
 import re
@@ -12,7 +12,14 @@ from .data_types import ModelResults
 
 
 def _get_colors(n: int) -> list:
-    """Returns n visually distinct colors."""
+    """Build a palette with enough visually distinct colors for the models.
+
+    Args:
+        n (int): Number of colors needed.
+
+    Returns:
+        list: Color entries for plotting.
+    """
     cmap = colormaps["tab20"] if n <= 20 else colormaps["hsv"]
     return [cmap(i / max(n - 1, 1)) for i in range(n)]
 
@@ -21,12 +28,11 @@ def plot_roc_curves(
     results: list[ModelResults],
     save_path: Path | None = None,
 ):
-    """Plots overlaid ROC curves for every ModelResults in results.
+    """Plot ROC curves for each saved model run.
 
     Args:
-        results (list[ModelResults]): One ModelResults per model.
-        save_path (Path | None): If provided, write the plot as a PNG here instead of
-            calling plt.show().
+        results (list[ModelResults]): Model results to compare.
+        save_path (Path | None): Optional PNG path for saving the figure.
     """
     results = sorted(results, key=lambda r: r.auc, reverse=True)
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -62,7 +68,12 @@ def plot_pr_curves(
     results: list[ModelResults],
     save_path: Path | None = None,
 ) -> None:
-    """Plots overlaid Precision-Recall curves for every ModelResults in results."""
+    """Plot precision-recall curves for each model result.
+
+    Args:
+        results (list[ModelResults]): Model results to compare.
+        save_path (Path | None): Optional PNG path for saving the figure.
+    """
     results = sorted(results, key=lambda r: r.auc_pr if hasattr(r, 'auc_pr') else 0.0, reverse=True)
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -92,14 +103,11 @@ def plot_metric_comparison(
     results: list[ModelResults],
     save_path: Path | None = None,
 ) -> None:
-    """Plots side-by-side bar charts of AUC and log loss.
-
-    AUC is higher-is-better and log loss is lower-is-better.
+    """Compare model AUC and log loss with side-by-side bar charts.
 
     Args:
-        results (list[ModelResults]): One ModelResults per model.
-        save_path (Path | None): If provided, write the plot as a PNG here instead of
-            calling plt.show().
+        results (list[ModelResults]): Model results to compare.
+        save_path (Path | None): Optional PNG path for saving the figure.
     """
     names = [r.model_name for r in results]
     aucs = [r.auc for r in results]
@@ -138,16 +146,11 @@ def plot_timing_comparison(
     results: list[ModelResults],
     save_path: Path | None = None,
 ) -> None:
-    """Plots stacked timing bars for each ModelResults in results.
-
-    The bars break total runtime into data preparation, fit, predict, and any
-    adapter-specific timing keys so the relative cost of each stage is easy to
-    compare.
+    """Compare model runtime by stage in a stacked bar chart.
 
     Args:
-        results (list[ModelResults]): One ModelResults per model.
-        save_path (Path | None): If provided, write the plot as a PNG here instead of
-            calling plt.show().
+        results (list[ModelResults]): Model results to compare.
+        save_path (Path | None): Optional PNG path for saving the figure.
     """
     names = [r.model_name for r in results]
     timing_values = [r.timing for r in results]

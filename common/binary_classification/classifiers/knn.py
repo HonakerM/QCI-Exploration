@@ -1,4 +1,4 @@
-"""K-Nearest Neighbors classifier adapter for fraud detection."""
+"""Wrap the scikit-learn KNN classifier in the shared adapter interface."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,7 +14,18 @@ from common.binary_classification.base import ClassifierAdapter, ClassifierConfi
 
 @dataclass
 class KNNConfig(ClassifierConfig):
-    """Hyperparameters for the K-Nearest Neighbors classifier."""
+    """Store the configuration for the K-nearest neighbors classifier.
+
+    Attributes:
+        algorithm_name (str): Registry key used to resolve this adapter.
+        n_neighbors (int): Number of neighbors considered for each prediction.
+        weights (str): Neighbor weighting strategy.
+        algorithm (str): Search algorithm passed to sklearn.
+        leaf_size (int): Leaf size for tree-based search.
+        p (int): Power parameter for the Minkowski metric.
+        metric (str): Distance metric used by KNN.
+        n_jobs (int): Parallelism used by the scikit-learn model.
+    """
 
     algorithm_name = "knn"
 
@@ -27,6 +38,11 @@ class KNNConfig(ClassifierConfig):
     n_jobs: int = -1
 
     def to_classifier_config(self) -> dict:
+        """Convert the config into sklearn KNeighborsClassifier arguments.
+
+        Returns:
+            dict: Keyword arguments for the sklearn model.
+        """
         return {
             "n_neighbors": self.n_neighbors,
             "weights": self.weights,
@@ -39,26 +55,24 @@ class KNNConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
+        """Return the model label used in reports and plots.
+
+        Returns:
+            str: User-facing display name.
+        """
         return "K-Nearest Neighbors"
 
 
 @register_classifier
 class KNNAdapter(ClassifierAdapter[KNNConfig]):
-    """Adapts KNeighborsClassifier to the common classifier interface.
-
-    KNN is a useful non-parametric baseline for fraud detection: it makes
-    no assumption about the decision boundary's shape, which can help
-    catch localized pockets of fraud that don't fit a global linear or
-    tree-based split. `weights="distance"` down-weights the influence of
-    far neighbors, which helps when fraud points are sparse and scattered
-    among legitimate ones. Distance-based methods are sensitive to feature
-    scale, so this is wrapped in a pipeline with a StandardScaler. Note
-    that KNN has no real "training" cost but can be slow to score at
-    inference time on large datasets since it needs a distance search
-    against the full training set.
-    """
+    """Wrap sklearn KNN in the shared binary-classification adapter API."""
 
     def __init__(self, config: KNNConfig):
+        """Create the fitted pipeline for the KNN model.
+
+        Args:
+            config (KNNConfig): KNN hyperparameters.
+        """
         super().__init__(config)
         self.model = make_pipeline(
             StandardScaler(),

@@ -1,4 +1,4 @@
-"""XGBoost classifier adapter for fraud detection."""
+"""Wrap the XGBoost classifier in the shared adapter interface."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +11,25 @@ from common.binary_classification.base import ClassifierAdapter, ClassifierConfi
 
 @dataclass
 class XGBoostConfig(ClassifierConfig):
-    """Hyperparameters for the XGBoost classifier."""
+    """Store the configuration for the XGBoost classifier.
+
+    Attributes:
+        algorithm_name (str): Registry key used to resolve this adapter.
+        n_estimators (int): Number of boosting rounds.
+        min_child_weight (int): Minimum sum of instance weight in a child node.
+        max_depth (int): Maximum tree depth.
+        learning_rate (float): Step size shrinkage for each boosting step.
+        subsample (float): Fraction of samples used per tree.
+        colsample_bytree (float): Fraction of features used per tree.
+        reg_lambda (float): L2 regularization term.
+        reg_alpha (float): L1 regularization term.
+        gamma (float): Minimum loss reduction required for a split.
+        max_bin (int): Maximum number of bins used for value discretization.
+        random_state (int): Random seed.
+        objective (str): Objective function used for binary classification.
+        tree_method (str): Tree construction algorithm.
+        eval_metric (str): Metric used to evaluate boosting iterations.
+    """
 
     algorithm_name = "xgboost"
 
@@ -31,6 +49,11 @@ class XGBoostConfig(ClassifierConfig):
     eval_metric: str = "auc"
 
     def to_classifier_config(self) -> dict:
+        """Convert the config into XGBClassifier arguments.
+
+        Returns:
+            dict: Keyword arguments for the XGBoost model.
+        """
         return {
             "n_estimators": self.n_estimators,
             "min_child_weight": self.min_child_weight,
@@ -50,12 +73,17 @@ class XGBoostConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
+        """Return the user-facing XGBoost label.
+
+        Returns:
+            str: Display name for the model.
+        """
         return "XGBoost"
 
 
 @register_classifier
 class XGBoostAdapter(ClassifierAdapter[XGBoostConfig]):
-    """Adapts XGBClassifier to the common classifier interface."""
+    """Wrap the XGBoost classifier in the shared binary-classification adapter API."""
 
     def __init__(self, config: XGBoostConfig):
         super().__init__(config)

@@ -1,4 +1,4 @@
-"""Dataclasses shared by the binary classification training scripts."""
+"""Define the shared data configuration and model result dataclasses."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,168 +14,7 @@ OversampleMethod = Literal["smote", "random", "adasyn"]
 
 @dataclass
 class DataConfig:
-    """Paths and split settings shared by both scripts.
-
-    This config has two layers of fields:
-
-    - **Legacy fields** (`non_fraud_sample_size`, `enforce_equal_samples`,
-      `over_sample_percentage`) behave EXACTLY as they always have. Any
-      existing yaml that only sets these will produce byte-identical
-      sampling to before — nothing about their behavior changed.
-    - **New, explicit fields** (`max_fraud_samples`, `max_non_fraud_samples`,
-      `class_balance_ratio`, `max_total_samples`, `oversample_ratio`,
-      `oversample_method`) give more direct, individually-named control
-      over each sampling decision. They're `None`/off by default and only
-      change behavior when you actually set them.
-
-    Where a new field and a legacy field describe the same thing
-    (`max_non_fraud_samples` vs. `non_fraud_sample_size`, `oversample_ratio`
-    vs. `over_sample_percentage`), setting either one works — see
-    `__post_init__` for exactly how they're reconciled, and the "Field
-    reference" section below for which one wins if both are set.
-
-    Field reference
-    ---------------
-    Sample-count controls (evaluated in this priority order):
-        1. `class_balance_ratio` — if set, non-fraud count is computed as
-           `round(class_balance_ratio * fraud_count)`, overriding
-           `max_non_fraud_samples`/`non_fraud_sample_size`.
-        2. `max_non_fraud_samples` (or its legacy alias
-           `non_fraud_sample_size`) — an explicit non-fraud row count.
-        3. If neither is set: non-fraud count defaults to the fraud count
-           (i.e. a 1:1 class balance) — this is the original default
-           behavior of `enforce_equal_samples=True`.
-
-    Fraud count is controlled independently by `max_fraud_samples`. Leaving
-    it `None` (the default) keeps ALL fraud rows, matching original
-    behavior, where fraud was never sub-sampled.
-
-    `max_total_samples` is an overall cap applied AFTER the above
-    class-count logic. If the resulting dataset is larger than the cap, a
-    stratified subsample (preserving the class ratio) is taken.
-
-    Important compatibility note: exactly like the original code, per-class
-    sampling only happens when `enforce_equal_samples=True` OR you've set
-    one of the new-style balancing fields (`max_fraud_samples`,
-    `class_balance_ratio`, or `max_total_samples`). Setting only
-    `max_non_fraud_samples`/`non_fraud_sample_size` with
-    `enforce_equal_samples=False` has NO effect, matching the original
-    code, which ignored `non_fraud_sample_size` entirely in that branch.
-    If you want an explicit non-fraud cap to actually apply, either set
-    `enforce_equal_samples=True` or set `class_balance_ratio` /
-    `max_total_samples` alongside it.
-
-    Attributes:
-        train_file (Optional[Path]): Path to the training CSV file, if any.
-        test_file (Optional[Path]): Path to the test CSV file, if any.
-        test_size (float): Fraction of the balanced dataset held out for evaluation.
-        non_fraud_sample_size (int | None): [LEGACY — see max_non_fraud_samples]
-            Number of non-fraud rows sampled to balance the dataset (fraud
-            rows are kept in full unless max_fraud_samples is set). Still
-            fully supported; new configs should prefer
-            `max_non_fraud_samples` for clarity.
-        max_fraud_samples (int | None): Caps the number of fraud rows used,
-            sampled randomly with `random_state`. `None` (default) keeps
-            every fraud row — this matches all original behavior, which
-            never sub-sampled the fraud class.
-        max_non_fraud_samples (int | None): Explicit, clearly-named cap on
-            non-fraud rows. Functionally identical to
-            `non_fraud_sample_size`; if both are set, this field wins. If
-            neither is set, `__post_init__` copies
-            `non_fraud_sample_size` into this field so the rest of the
-            code only has to look in one place.
-        class_balance_ratio (float | None): Desired ratio of
-            non-fraud : fraud rows in the pre-split, pre-oversample
-            dataset. E.g. `1.0` means equal counts (the original
-            `enforce_equal_samples=True` default), `5.0` means five
-            non-fraud rows for every fraud row. Takes priority over
-            `max_non_fraud_samples`/`non_fraud_sample_size` when set.
-        max_total_samples (int | None): Hard cap on the total row count
-            after class-balancing. If the balanced dataset exceeds this, a
-            stratified subsample preserving the current class ratio is
-            taken. `None` (default) means no cap — matches original
-            behavior.
-        random_state (int): Seed used for sampling and the train/test split.
-        class_name (str): Name of the target/label column.
-        v_feature_names (list[str]): Names of the PCA-transformed input columns.
-            Populated automatically by `load_data()` from whichever columns
-            start with "V" — any value set here is overwritten and has no
-            effect on which columns are used.
-        engineered_feature_names (list[str]): Names of the aggregate features added on
-            top of the V-prefixed columns.
-        additional_feature_names (list[str]): Names of any extra raw feature columns
-            to include alongside the V and engineered features. Also used
-            as the `ignored_fields` list for the categorical target-encoder
-            in `load_data()` — columns named here are never renamed/encoded
-            as categorical features. Has no effect on datasets (like
-            mlg-ulb) with no categorical columns to encode.
-        index_column (str): Name of the row identifier column.
-        should_over_sample (bool): Whether to apply oversampling to the
-            training fold after the split. Oversampling is never applied to
-            the test fold.
-        oversample_method (Literal["smote", "random", "adasyn"]): Which
-            imbalanced-learn oversampler to use. Defaults to `"smote"`,
-            matching original behavior exactly. `"random"` uses
-            `RandomOverSampler` (duplicates existing minority rows —
-            cheaper, no synthetic interpolation). `"adasyn"` uses ADASYN
-            (like SMOTE, but focuses synthetic samples on harder-to-learn
-            minority points).
-        over_sample_percentage (float): [LEGACY — see oversample_ratio]
-            Passed as `sampling_strategy` to the oversampler. Still fully
-            supported; new configs should prefer `oversample_ratio` for
-            clarity.
-        oversample_ratio (float | None): Explicit, clearly-named version of
-            `over_sample_percentage` — the desired minority:majority row
-            ratio in the training fold AFTER oversampling (e.g. `1.0` =
-            fully balanced classes, `0.5` = minority ends up at half the
-            majority's count). If unset, `__post_init__` copies
-            `over_sample_percentage` into this field.
-        preserve_natural_test_distribution (bool): If True, the train/test
-            split happens BEFORE any class-balancing/sampling, and only the
-            training fold is balanced/limited/oversampled — the test fold
-            is returned exactly as split, at its natural class ratio. This
-            matches the paper's evaluation protocol ("test-fold remained
-            original"). If False (default), matches the original
-            implementation: the whole dataset is balanced first, so both
-            train and test come from the same balanced pool.
-        split_method (Literal["random", "chronological"]): `"random"`
-            (default) performs the original stratified random split.
-            `"chronological"` sorts by `time_column` and takes the earliest
-            `1 - test_size` fraction as train, the rest as test — tests
-            robustness to distribution shift instead of leaking
-            near-future rows into training.
-        time_column (str): Column used to sort rows when
-            `split_method="chronological"`. Defaults to `"Time"`, matching
-            mlg-ulb.
-        feature_scaling (Literal["none", "minmax", "standard"]): `"none"`
-            (default) applies no scaling, matching original behavior.
-            `"minmax"` scales each feature to [0, 1] (matching the paper's
-            preprocessing) and `"standard"` z-scores each feature. Fit on
-            the training fold only, then applied to both folds, to avoid
-            leakage.
-        drop_duplicates (bool): If True, exact-duplicate rows are dropped
-            before any sampling/splitting. mlg-ulb is known to contain
-            ~1,081 exact duplicate rows; left in, a duplicate can land in
-            both the train and test folds, which is direct leakage.
-            Defaults to False, matching original behavior.
-        log_transform_amount (bool): If True, applies `log1p` to
-            `amount_column` before feature extraction — `Amount` is
-            heavily right-skewed, and this is a standard fix that
-            particularly helps distance/linear-based classifiers (KNN,
-            LDA, logistic regression). Defaults to False.
-        amount_column (str): Column `log_transform_amount` applies to.
-            Defaults to `"Amount"`.
-        sample_random_state (int | None): Random state for the
-            fraud/non-fraud `.sample()` calls. Falls back to
-            `random_state` when `None` (default) — matches original
-            behavior.
-        split_random_state (int | None): Random state for the train/test
-            split. Falls back to `random_state` when `None` (default) —
-            matches original behavior.
-        oversample_random_state (int | None): Random state for the
-            oversampler. Falls back to `random_state` when `None`
-            (default) — matches original behavior.
-    """
+    """Store the dataset and sampling settings used for a binary-classification run."""
 
     train_file: Optional[Path] = None
     test_file: Optional[Path] = None
@@ -252,18 +91,10 @@ class DataConfig:
     oversample_random_state: int | None = None
 
     def __post_init__(self) -> None:
-        """Reconciles legacy fields with their new, explicitly-named aliases.
-
-        This runs once, right after the dataclass is constructed (whether
-        via `DataConfig(...)` directly or `DataConfig(**yaml_dict)`). It
-        never overwrites a value you explicitly set on the new-style
-        field — it only fills the new field in when you left it at its
-        default `None`, using whatever the legacy field holds. This is
-        what makes old yaml configs (which only ever set the legacy
-        fields) produce identical behavior to before.
+        """Resolve legacy field aliases and validate the configuration values.
 
         Returns:
-            None.
+            None: Updates any unset modern fields from their legacy counterparts.
         """
         if self.max_non_fraud_samples is None:
             self.max_non_fraud_samples = self.non_fraud_sample_size
@@ -293,18 +124,10 @@ class DataConfig:
 
     @property
     def uses_class_balancing(self) -> bool:
-        """Whether prep_data() will run the per-class sampling branch.
-
-        Mirrors the exact condition used in `prep_data()`: True if
-        `enforce_equal_samples` is set, or if any new-style balancing field
-        (`max_fraud_samples`, `class_balance_ratio`, `max_total_samples`)
-        is set. Note `max_non_fraud_samples`/`non_fraud_sample_size` alone
-        does NOT trigger this branch — see the class docstring's
-        "Important compatibility note".
+        """Return whether the per-class balancing path should be used.
 
         Returns:
-            bool: True if class-balanced sampling will run, False if the
-            legacy dropna-only fallback will run instead.
+            bool: True when explicit balancing settings are active.
         """
         return (
             self.enforce_equal_samples
@@ -315,17 +138,29 @@ class DataConfig:
 
     @property
     def effective_sample_random_state(self) -> int:
-        """Returns sample_random_state, falling back to random_state."""
+        """Return the random state to use for class sampling.
+
+        Returns:
+            int: Explicit sample seed or the default seed.
+        """
         return self.sample_random_state if self.sample_random_state is not None else self.random_state
 
     @property
     def effective_split_random_state(self) -> int:
-        """Returns split_random_state, falling back to random_state."""
+        """Return the random state to use for the train/test split.
+
+        Returns:
+            int: Explicit split seed or the default seed.
+        """
         return self.split_random_state if self.split_random_state is not None else self.random_state
 
     @property
     def effective_oversample_random_state(self) -> int:
-        """Returns oversample_random_state, falling back to random_state."""
+        """Return the random state to use for oversampling.
+
+        Returns:
+            int: Explicit oversampling seed or the default seed.
+        """
         return (
             self.oversample_random_state
             if self.oversample_random_state is not None
@@ -334,11 +169,10 @@ class DataConfig:
 
     @property
     def all_feature_names(self) -> list[str]:
-        """Returns the full ordered feature list fed into model input arrays.
+        """Return the ordered list of model input feature names.
 
         Returns:
-            The concatenation of v_feature_names, engineered_feature_names,
-            and additional_feature_names, in that order.
+            list[str]: V-features, engineered features, and extra features combined.
         """
         return (
             self.v_feature_names
@@ -348,14 +182,7 @@ class DataConfig:
 
 @dataclass
 class DataSplit:
-    """Typed container for the four NumPy arrays produced by prep_data().
-
-    Attributes:
-        X_train (np.ndarray): Training feature matrix.
-        y_train (np.ndarray): Training labels.
-        X_test (np.ndarray): Test feature matrix.
-        y_test (np.ndarray): Test labels.
-    """
+    """Store the train/test feature matrices and label arrays for one dataset split."""
 
     X_train: np.ndarray
     y_train: np.ndarray
@@ -363,10 +190,10 @@ class DataSplit:
     y_test: np.ndarray
 
     def __post_init__(self) -> None:
-        """Validates that feature and label arrays have matching row counts.
+        """Verify that the training and test arrays have matching row counts.
 
         Returns:
-            None.
+            None: Raises an assertion if array dimensions do not match.
         """
         assert self.X_train.shape[0] == self.y_train.shape[0], (
             "X_train and y_train row counts must match"
@@ -377,33 +204,35 @@ class DataSplit:
 
     @property
     def n_features(self) -> int:
-        """Returns the number of feature columns in the training matrix."""
+        """Return the number of feature columns in the training matrix.
+
+        Returns:
+            int: Feature count.
+        """
         return self.X_train.shape[1]
 
     @property
     def n_train(self) -> int:
-        """Returns the number of training rows."""
+        """Return the number of rows in the training split.
+
+        Returns:
+            int: Training row count.
+        """
         return self.X_train.shape[0]
 
     @property
     def n_test(self) -> int:
-        """Returns the number of test rows."""
+        """Return the number of rows in the test split.
+
+        Returns:
+            int: Test row count.
+        """
         return self.X_test.shape[0]
 
 
 @dataclass
 class ClassificationMetrics:
-    """Binary classification scores for one data split.
-
-    Attributes:
-        split (str): Name of the data split these metrics were computed on, e.g.
-            "train" or "test".
-        precision (float): Precision score for the positive class.
-        recall (float): Recall score for the positive class.
-        f1 (float): F1 score for the positive class.
-        accuracy (float): Overall accuracy.
-        confusion_matrix (np.ndarray): Confusion matrix with shape (2, 2).
-    """
+    """Store the summary metrics for one classification split."""
 
     split: str
     precision: float
@@ -413,11 +242,10 @@ class ClassificationMetrics:
     confusion_matrix: np.ndarray
 
     def __str__(self) -> str:
-        """Returns a formatted multi-line summary of the metrics.
+        """Render a readable summary of the computed metrics.
 
         Returns:
-            str: A human-readable string with precision, recall, F1, accuracy,
-            and the confusion matrix.
+            str: Formatted precision, recall, F1, accuracy, and confusion matrix.
         """
         tag = self.split.capitalize()
         return (
@@ -431,14 +259,7 @@ class ClassificationMetrics:
 
 @dataclass
 class TimingInfo:
-    """Durations for the main stages of a model run.
-
-    Attributes:
-        data_prep (float): Time spent preparing the dataset.
-        fit (float | None): Time spent fitting the model, if captured directly.
-        predict (float): Time spent generating predictions.
-        adapter (dict[str, float]): Adapter-specific timing measurements.
-    """
+    """Store the timing for the main stages of a model run."""
 
     data_prep: float = 0.0
     fit: float | None = 0.0
@@ -447,17 +268,29 @@ class TimingInfo:
 
     @property
     def adapter_seconds(self) -> float:
-        """Returns the total adapter-specific runtime in seconds."""
+        """Return the sum of all adapter-specific timing values.
+
+        Returns:
+            float: Total adapter runtime.
+        """
         return sum(self.adapter.values())
 
     @property
     def total_seconds(self) -> float:
-        """Returns the total recorded runtime in seconds."""
+        """Return the total runtime across the recorded stages.
+
+        Returns:
+            float: Total seconds for data prep, fit, predict, and adapters.
+        """
         fit_seconds = self.fit if self.fit is not None else self.adapter_seconds
         return self.data_prep + fit_seconds + self.predict
 
     def to_dict(self) -> dict[str, Any]:
-        """Converts this timing info into a JSON-serializable dictionary."""
+        """Convert the timing data into a JSON-serializable dictionary.
+
+        Returns:
+            dict[str, Any]: Dictionary format suitable for JSON output.
+        """
         data: dict[str, Any] = {
             "data_prep": self.data_prep,
             "fit": self.fit,
@@ -469,7 +302,14 @@ class TimingInfo:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TimingInfo":
-        """Reconstructs timing info from a dictionary representation."""
+        """Rebuild a TimingInfo instance from its dictionary form.
+
+        Args:
+            data (dict[str, Any]): Serialized timing values.
+
+        Returns:
+            TimingInfo: Reconstructed timing object.
+        """
         adapter_data = data.get("adapter", {})
         adapter = adapter_data if isinstance(adapter_data, dict) else {}
         return cls(
@@ -482,18 +322,7 @@ class TimingInfo:
 
 @dataclass
 class ModelResults:
-    """Everything produced by training and evaluating one model.
-
-    Attributes:
-        model_name (str): Name of the trained model.
-        timing (TimingInfo): Stage timings for the run.
-        fpr (np.ndarray): False positive rates for the ROC curve.
-        tpr (np.ndarray): True positive rates for the ROC curve.
-        auc (float): Area under the ROC curve.
-        log_loss (float): Log loss on the test split.
-        train_metrics (ClassificationMetrics): Classification metrics computed on the train split.
-        test_metrics (ClassificationMetrics): Classification metrics computed on the test split.
-    """
+    """Store the full output from training and evaluating a single model."""
 
     model_name: str
 
@@ -514,15 +343,18 @@ class ModelResults:
 
     @property
     def training_time_seconds(self) -> float:
-        """Returns the total recorded runtime in seconds."""
+        """Return the total recorded run time for this model.
+
+        Returns:
+            float: Runtime in seconds.
+        """
         return self.timing.total_seconds
 
     def to_dict(self) -> dict[str, Any]:
-        """Converts these results into a JSON-serializable dictionary.
+        """Serialize the model output to a JSON-safe dictionary.
 
         Returns:
-            dict[str, Any]: A dictionary representation of all fields, with NumPy arrays
-            converted to lists.
+            dict[str, Any]: Dictionary form of the model result values.
         """
         return {
             "model_name": self.model_name,
@@ -554,24 +386,24 @@ class ModelResults:
         }
 
     def save(self, path: str | Path, indent: int = 2):
-        """Persists the results as JSON so they can be reloaded later.
+        """Write the model result bundle to a JSON file.
 
         Args:
             path (str | Path): Destination file path.
-            indent (int): Number of spaces to indent the JSON output.
+            indent (int): Number of spaces to use in the JSON output.
         """
         path = Path(path)
         path.write_text(json.dumps(self.to_dict(), indent=indent), encoding="utf-8")
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ModelResults":
-        """Builds a ModelResults from a dictionary produced by to_dict().
+        """Rebuild a ModelResults instance from its dictionary form.
 
         Args:
-            data (dict[str, Any]): Dictionary with the same shape as to_dict()'s output.
+            data (dict[str, Any]): Serialized model results.
 
         Returns:
-            ModelResults: The reconstructed ModelResults instance.
+            ModelResults: Reconstructed model result bundle.
         """
         timing_data = data.get("timing")
         if timing_data is None:
@@ -612,23 +444,22 @@ class ModelResults:
 
     @classmethod
     def load(cls, path: str | Path) -> "ModelResults":
-        """Loads results previously written with save().
+        """Load a saved model result bundle from a JSON file.
 
         Args:
-            path (str | Path): Path to the JSON file to load.
+            path (str | Path): Path to the result file.
 
         Returns:
-            The loaded ModelResults instance.
+            ModelResults: Reconstructed model result bundle.
         """
         path = Path(path)
         return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
     def summary(self) -> str:
-        """Returns a formatted multi-line summary of the model results.
+        """Render the full model summary as a human-readable string.
 
         Returns:
-            str: A human-readable string with training time, AUC, log loss, and
-            both the train and test metrics.
+            str: Text summary with timing, AUC, log loss, and metrics.
         """
         return (
             f"=== {self.model_name} ===\n"

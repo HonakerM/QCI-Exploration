@@ -1,11 +1,4 @@
-"""Trains and evaluates pluggable binary classifiers for fraud detection.
-
-This runner unifies the previous `ensemble_fraud.py` and the newer
-`classifier_fraud.py` behavior: it accepts YAML test files that specify an
-`algorithm`, `data`, and `classifier` section, builds the requested adapter
-from the shared registry, runs training/evaluation, and saves results to the
-corresponding `results/...` JSON path.
-"""
+"""Run binary-classification experiments defined by YAML config files."""
 
 from enum import StrEnum
 import time
@@ -59,11 +52,16 @@ def train(
     data_cfg: DataConfig,
     data_prep_seconds: float = 0.0,
 ) -> ModelResults:
-    """Fits `adapter` and returns fully-populated ModelResults.
+    """Train an adapter and package the resulting metrics and timing.
 
-    The runner always works with labels in {-1, +1}; adapters that require a
-    different label encoding (e.g. XGBoost) are expected to perform any
-    internal remapping themselves.
+    Args:
+        split (DataSplit): Prepared training and test arrays for the dataset.
+        adapter (ClassifierAdapter): Model adapter to fit and score.
+        data_cfg (DataConfig): Data settings used to name the run and save artifacts.
+        data_prep_seconds (float): Time spent preparing the dataset before fitting.
+
+    Returns:
+        ModelResults: Metrics, ROC/PR arrays, and timing for the trained model.
     """
     LOGGER.info("Submitting %s job...", adapter.config.display_name)
     t0 = time.perf_counter()
@@ -159,12 +157,14 @@ def test_folder(
     suppress_warnings: bool = False,
     rerun: bool = False
 ):
-    """Runs fraud training and evaluation for a chosen classifier algorithm.
+    """Run every YAML experiment file in a folder.
 
     Args:
-        test_folder (Path): Path to a folder containing one or more YAML test files.
-        dry_run (bool): If True, only loads the test files and validates them without
-            running any training. Defaults to False.
+        test_folder (Path): Directory containing experiment definition files.
+        dry_run (bool): Load and validate the configs without training models.
+        display_plots (bool): Display any generated plots after each run.
+        suppress_warnings (bool): Suppress warnings during the run.
+        rerun (bool): Ignore existing result files and rerun the experiments.
     """
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
@@ -193,17 +193,13 @@ def test_file(
     save_plots: bool = False,
     _from_folder: bool = typer.Option(default=False, expose_value=False, hidden=True),
 ):
-    """Runs fraud training and evaluation for a chosen classifier algorithm.
+    """Run a single experiment from a YAML file.
 
     Args:
-        test_file (Path): Path to a YAML test file containing algorithm, data, and
-            classifier configuration.
-        dry_run (bool): If True, only loads the test file and validates it without
-            running any training. Defaults to False.
-        display_plots (bool): If True, displays ROC and metric comparison plots.
-            Defaults to False.
-        save_plots (bool): If True, saves ROC and metric comparison plots to the
-            current working directory. Defaults to False.
+        test_file (Path): YAML file that defines the data and model configuration.
+        dry_run (bool): Validate the config and data pipeline without training.
+        display_plots (bool): Display training diagnostics and comparison plots.
+        save_plots (bool): Save comparison plots to disk when enabled.
     """
     if not _from_folder:
         load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
@@ -256,7 +252,7 @@ def test_file(
     )
 
     if dry_run:
-        LOGGER.info("--dry-run complete. Everything looks good - remove --dry-run to submit.")
+        LOGGER.info("--dry-run complete. Everything looks good - remove --dry-run to continue.")
         LOGGER.info("done (%.1fs total)", time.time() - overall_start)
         return
 

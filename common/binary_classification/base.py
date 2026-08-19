@@ -1,9 +1,4 @@
-"""Shared classifier base and registry for binary classification adapters.
-
-This central module exposes `ClassifierConfig`, `ClassifierAdapter`, and the
-adapter registry helpers so both `ensemble_classifiers` and `classifiers`
-subpackages can reuse a single implementation and stay compatible.
-"""
+"""Define the shared classifier interfaces and adapter registry."""
 
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -13,21 +8,31 @@ import numpy as np
 
 
 class ClassifierConfig(ABC):
-    """Hyperparameters for one pluggable classifier.
+    """Base configuration object for a pluggable classifier.
 
-    Concrete subclasses are expected to be `@dataclass`-decorated and must set
-    an `algorithm_name` ClassVar used as the registry key.
+    Attributes:
+        algorithm_name (ClassVar[str]): Registry key used to resolve the adapter.
     """
 
     algorithm_name: ClassVar[str]
 
     @abstractmethod
     def to_classifier_config(self) -> dict:
+        """Convert the config into the backend model's keyword arguments.
+
+        Returns:
+            dict: Keyword arguments for the underlying classifier constructor.
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def display_name(self) -> str:
+        """Return the user-facing model name.
+
+        Returns:
+            str: Display label for the classifier.
+        """
         raise NotImplementedError
 
 
@@ -35,13 +40,22 @@ TConfig = TypeVar("TConfig", bound=ClassifierConfig)
 
 
 class ClassifierAdapter(ABC, Generic[TConfig]):
-    """Wraps a concrete backend model behind a common fit/predict/save API."""
+    """Common adapter interface for training, predicting, and saving a model.
+
+    Attributes:
+        config (TConfig): Model configuration associated with this adapter.
+    """
 
     def __init__(self, config: TConfig):
         self.config: TConfig = config
 
     @classmethod
     def config_cls(cls) -> type[TConfig]:
+        """Return the configuration dataclass associated with this adapter.
+
+        Returns:
+            type[TConfig]: Concrete config class for the adapter.
+        """
         for base in getattr(cls, "__orig_bases__", ()):  # pragma: no cover - typing helper
             if get_origin(base) is ClassifierAdapter:
                 args = get_args(base)
@@ -53,24 +67,61 @@ class ClassifierAdapter(ABC, Generic[TConfig]):
 
     @abstractmethod
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
+        """Train the wrapped model on the supplied feature matrix.
+
+        Args:
+            X_train (np.ndarray): Training features.
+            y_train (np.ndarray): Training labels.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict hard labels for the provided feature matrix.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Predicted labels in the model's normalized {-1, 1} form.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """Predict class probabilities for the provided feature matrix.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Probability for the positive class.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def save(self, path: Path) -> None:
+        """Serialize the fitted model to disk.
+
+        Args:
+            path (Path): Output location for the saved model.
+        """
         raise NotImplementedError
 
     def get_train_timing(self) -> dict[str, float] | None:
+        """Return adapter-specific timing values captured during training.
+
+        Returns:
+            dict[str, float] | None: Timing breakdown for the adapter, if available.
+        """
         return None
 
     def submission_warning(self) -> str | None:
+        """Return any warning that should be shown before submitting a run.
+
+        Returns:
+            str | None: Warning text or None when no warning is required.
+        """
         return None
 
 
@@ -79,11 +130,27 @@ _REGISTRY: dict[str, type[ClassifierAdapter]] = {}
 
 
 def register_classifier(adapter_cls: type[ClassifierAdapter]) -> type[ClassifierAdapter]:
+    """Register a classifier adapter under its configured algorithm name.
+
+    Args:
+        adapter_cls (type[ClassifierAdapter]): Adapter class to register.
+
+    Returns:
+        type[ClassifierAdapter]: The registered adapter class.
+    """
     _REGISTRY[adapter_cls.config_cls().algorithm_name] = adapter_cls
     return adapter_cls
 
 
 def get_adapter_cls(algorithm_name: str) -> type[ClassifierAdapter]:
+    """Resolve an algorithm name to the registered adapter class.
+
+    Args:
+        algorithm_name (str): Algorithm key to look up.
+
+    Returns:
+        type[ClassifierAdapter]: Registered adapter class.
+    """
     try:
         return _REGISTRY[algorithm_name]
     except KeyError:
@@ -93,4 +160,9 @@ def get_adapter_cls(algorithm_name: str) -> type[ClassifierAdapter]:
 
 
 def available_algorithms() -> list[str]:
+    """Return the sorted list of registered algorithm names.
+
+    Returns:
+        list[str]: Known algorithm identifiers.
+    """
     return sorted(_REGISTRY)

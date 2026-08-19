@@ -1,4 +1,4 @@
-"""Logistic Regression classifier adapter for fraud detection."""
+"""Wrap the scikit-learn logistic regression model in the shared adapter interface."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,7 +14,18 @@ from common.binary_classification.base import ClassifierAdapter, ClassifierConfi
 
 @dataclass
 class LogisticRegressionConfig(ClassifierConfig):
-    """Hyperparameters for the Logistic Regression classifier."""
+    """Store the configuration for the logistic regression model.
+
+    Attributes:
+        algorithm_name (str): Registry key used to resolve this adapter.
+        penalty (str | None): Regularization penalty applied to the coefficients.
+        C (float): Inverse regularization strength.
+        solver (str): Optimization solver used by sklearn.
+        max_iter (int): Maximum number of optimization iterations.
+        class_weight (str | None): Weighting strategy for the minority class.
+        tol (float): Tolerance for convergence.
+        random_state (int): Seed used by the solver.
+    """
 
     algorithm_name = "logistic_regression"
 
@@ -27,6 +38,11 @@ class LogisticRegressionConfig(ClassifierConfig):
     random_state: int = 228
 
     def to_classifier_config(self) -> dict:
+        """Convert the config into sklearn LogisticRegression arguments.
+
+        Returns:
+            dict: Keyword arguments for the sklearn model.
+        """
         return {
             "penalty": self.penalty,
             "C": self.C,
@@ -39,22 +55,24 @@ class LogisticRegressionConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
+        """Return the user-facing logistic regression label.
+
+        Returns:
+            str: Display name for the model.
+        """
         return "Logistic Regression"
 
 
 @register_classifier
 class LogisticRegressionAdapter(ClassifierAdapter[LogisticRegressionConfig]):
-    """Adapts LogisticRegression to the common classifier interface.
-
-    A fast, highly interpretable linear baseline. It's cheap to train and
-    score (useful for latency-sensitive fraud scoring paths), gives
-    well-calibrated probabilities that pair naturally with a threshold or
-    cost-based decision policy, and `class_weight="balanced"` compensates
-    for the low fraud prevalence. Standardizing features matters a lot for
-    this model, so it's wrapped in a pipeline with a StandardScaler.
-    """
+    """Wrap sklearn logistic regression in the shared binary-classification adapter API."""
 
     def __init__(self, config: LogisticRegressionConfig):
+        """Create the scaled logistic regression pipeline.
+
+        Args:
+            config (LogisticRegressionConfig): Model hyperparameters.
+        """
         super().__init__(config)
         self.model = make_pipeline(
             StandardScaler(),

@@ -1,4 +1,4 @@
-"""Get current status of your QCI account and allocations."""
+"""Print the current QCI account and allocation status."""
 
 import typer
 from dotenv import load_dotenv
@@ -12,7 +12,11 @@ LOGGER = get_logger(__name__)
 
 
 def main():
-    """Prints information about the current QCI user and session"""
+    """Print the current QCI allocations and access state.
+
+    Returns:
+        None: Logs the user-visible status for each allocation.
+    """
     load_dotenv()  # pull QCI_TOKEN / QCI_API_URL from .env if present
     setup_logging()
 

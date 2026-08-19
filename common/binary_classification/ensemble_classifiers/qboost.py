@@ -1,7 +1,4 @@
-# ---------------------------------------------------------------------------
-# CVQBoost: config
-# ---------------------------------------------------------------------------
-
+"""Wrap the QBoost model behind the shared classifier adapter API."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,23 +15,19 @@ from common.binary_classification.base import (
 from common.qci import get_time_remaining
 
 
-# ---------------------------------------------------------------------------
-# CVQBoost: config
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class CVQBoostConfig(ClassifierConfig):
-    """Hyperparameters for the QBoostClassifier running on QCi Dirac-3.
+    """Store the config for the QCi QBoost model.
 
     Attributes:
-        relaxation_schedule (int): Relaxation schedule index used by the Dirac-3
-            solver.
+        algorithm_name (str): Registry key used to resolve this adapter.
+        relaxation_schedule (int): Relaxation schedule index sent to the Dirac-3 solver.
         num_samples (int): Number of samples requested from the solver.
-        lambda_coef (float): Regularization coefficient applied during training.
-        weak_cls_strategy (str): Strategy used to fit weak classifiers;
-            'sequential' is required on Windows (single-threaded weak
-            classifiers).
+        lambda_coef (float): Regularization weight applied during training.
+        weak_cls_strategy (str): Weak-classifier training strategy.
+        weak_cls_type (str): Weak learner model type used in the ensemble.
+        weak_cls_schedule (int): Schedule index for the weak classifiers.
+        weak_cls_params (dict | None): Extra parameters forwarded to the weak learner.
     """
 
     algorithm_name = "cvqboost"
@@ -49,10 +42,10 @@ class CVQBoostConfig(ClassifierConfig):
     weak_cls_params: dict | None = None
 
     def to_classifier_config(self) -> dict:
-        """Converts the config into keyword arguments for QBoostClassifier.
+        """Convert the config into keyword arguments for the QBoost backend.
 
         Returns:
-            dict: A dictionary of hyperparameters suitable for QBoostClassifier(**kwargs).
+            dict: Keyword arguments for the QBoost model constructor.
         """
         weak_cls_params = self.weak_cls_params or {}
         return {
@@ -67,7 +60,11 @@ class CVQBoostConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
-        """Short name identifying this classifier variant."""
+        """Return the user-facing label for this QBoost variant.
+
+        Returns:
+            str: Display name used in reporting.
+        """
         return f"CVQBoost ({self.weak_cls_type})"
 
 
@@ -78,9 +75,14 @@ class CVQBoostConfig(ClassifierConfig):
 
 @register_classifier
 class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
-    """Adapts eqc_models' QBoostClassifier (QCi Dirac-3) to ClassifierAdapter."""
+    """Wrap the QCi Dirac-3 QBoost backend in the shared adapter interface."""
 
     def __init__(self, config: CVQBoostConfig):
+        """Create the QBoost adapter and wrap the backend model.
+
+        Args:
+            config (CVQBoostConfig): QBoost hyperparameters and solver settings.
+        """
         super().__init__(config)
         # Import here so the rest of the script loads without quantum libs installed
         from eqc_models.ml import QBoostClassifier
@@ -100,20 +102,43 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
         self.model.get_hamiltonian = timed_get_hamiltonian
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
-        """Submits a training job to QCi Dirac-3 and fits in place."""
+        """Submit the training job to QCi and store the response payload.
+
+        Args:
+            X_train (np.ndarray): Training feature matrix.
+            y_train (np.ndarray): Training labels.
+        """
         self.result = self.model.fit(X_train, y_train)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Returns hard {-1, +1} predictions."""
+        """Return hard class predictions in the shared {-1, 1} format.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Predicted labels.
+        """
         return self.model.predict(X)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Maps QBoost's raw scores in [-1, +1] to probabilities in [0, 1]."""
+        """Return the positive-class probability for each row.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Probability of the positive class.
+        """
         raw_scores = self.model.predict_raw(X)
         return np.clip(0.5 * (raw_scores + 1.0), 0.0, 1.0)
 
     def save(self, path: Path) -> None:
-        """Persists the fitted model's boosting state as a joblib bundle."""
+        """Persist the fitted QBoost model bundle to a joblib file.
+
+        Args:
+            path (Path): Output location for the saved model state.
+        """
         bundle = {
             "h_list": self.model.h_list,
             "ind_list": self.model.ind_list,
@@ -126,7 +151,11 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
         joblib.dump(bundle, path)
 
     def get_train_timing(self) -> dict[str, float] | None:
-        """Returns adapter-specific timing measurements."""
+        """Return the timing breakdown captured from the QBoost training job.
+
+        Returns:
+            dict[str, float] | None: Timing values for the QBoost stages.
+        """
         solve_resp = self.result
 
         NS_TO_S = 1e-9
@@ -158,7 +187,11 @@ class CVQBoostAdapter(ClassifierAdapter[CVQBoostConfig]):
         return times
 
     def submission_warning(self) -> str | None:
-        """Warns that training will incur charges on the QCi account."""
+        """Return the charge warning before submitting a QCi training job.
+
+        Returns:
+            str | None: Warning message describing the remaining account time.
+        """
         return (
             f"CONTINUING WILL CAUSE CHARGES TO QCI ACCOUNT! "
             f"YOU HAVE {get_time_remaining()}s REMAINING"

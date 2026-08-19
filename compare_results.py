@@ -1,4 +1,4 @@
-"""CLI for comparing saved model results with ROC and metric plots."""
+"""Compare saved model runs and render summary plots."""
 
 import csv
 from pathlib import Path
@@ -17,18 +17,11 @@ app = typer.Typer()
 
 
 def save_results_csv(results: list[ModelResults], path: Path) -> None:
-    """Writes one row per model's test results to a CSV file.
-
-    Each row includes the model name, AUC, log loss, test classification
-    metrics, and timing breakdown. Timing is split into one column per
-    stage (data_prep, fit, predict) plus one column per adapter-specific
-    timing label. Since adapter timing labels can differ between results,
-    the column set is the union of all labels seen across the given
-    results; any result missing a given label gets a blank cell for it.
+    """Write the saved model metrics and timings to a CSV summary file.
 
     Args:
-        results (list[ModelResults]): Model results to write.
-        path (Path): Destination CSV file path.
+        results (list[ModelResults]): Results to export.
+        path (Path): Destination CSV path.
     """
     base_fields = [
         "model_name",
@@ -93,14 +86,12 @@ def main(
     save_file: Path | None = None,
     display: bool = True,
 ):
-    """Loads results JSONs and plots ROC curves, metrics, and timing comparisons.
+    """Load saved results and render the comparison plots.
 
     Args:
-        results_files (list[Path]): Paths to saved ModelResults JSON files or folders
-            containing JSON files.
-        save_file (Path): If provided, save the comparison results to this file.
-        csv_file (Path): If provided, save a CSV summary (AUC, log loss, test
-            metrics, and per-stage timing) with one row per model result.
+        results_files (list[Path]): JSON files or directories to compare.
+        save_file (Path | None): Optional base name for exported plot files.
+        display (bool): Whether to show the generated plots in a window.
     """
     resolved_files: list[Path] = []
     for path in results_files:

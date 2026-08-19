@@ -1,3 +1,5 @@
+"""Wrap the Qiskit QBoost implementation behind the shared adapter interface."""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -92,21 +94,10 @@ class QiskitQBoostClassifier(QBoostClassifier):
         self.classical = classical
 
     def solve(self):  # type: ignore[override]
-        """Classically solves the bounded QUBO relaxation via L-BFGS-B.
+        """Solve the QUBO with a Qiskit optimizer or a classical fallback.
 
-        Reads `self._J`, `self._C`, and `self.upper_bound` exactly as
-        `set_model()` (inherited, unmodified) left them, and minimizes
-        `x'Jx + C'x` subject to `0 <= x <= upper_bound` — the same problem
-        `ClassifierBase.solve()` would otherwise ship to Dirac-3.
-
-        Returns
-        -------
-        sol : ndarray of shape (n_classifiers,)
-            The optimized per-weak-classifier weights.
-        response : dict
-            A small JSON-serializable summary of the classical solve,
-            standing in for the response QBoostClassifier.fit() would
-            otherwise get back from Dirac-3.
+        Returns:
+            tuple[np.ndarray, dict]: Optimized variables and metadata about the solve.
         """
         J = self._J
         C = np.asarray(self._C, dtype=np.float64).reshape(-1)
@@ -151,16 +142,18 @@ class QiskitQBoostClassifier(QBoostClassifier):
 
 @dataclass
 class QiskitQBoostConfig(ClassifierConfig):
-    """Hyperparameters for the QBoostClassifier running on QCi Dirac-3.
+    """Store the configuration for the Qiskit-backed QBoost solver.
 
     Attributes:
-        relaxation_schedule (int): Relaxation schedule index used by the Dirac-3
-            solver.
+        algorithm_name (str): Registry key used to resolve this adapter.
+        classical (bool): Whether to use the classical NumPy eigensolver instead of QAOA.
+        relaxation_schedule (int): Relaxation schedule index sent to the backend.
         num_samples (int): Number of samples requested from the solver.
         lambda_coef (float): Regularization coefficient applied during training.
-        weak_cls_strategy (str): Strategy used to fit weak classifiers;
-            'sequential' is required on Windows (single-threaded weak
-            classifiers).
+        weak_cls_strategy (str): Strategy used to fit the weak learners.
+        weak_cls_type (str): Type of weak learner used by the ensemble.
+        weak_cls_schedule (int): Schedule index for the weak learners.
+        weak_cls_params (dict | None): Extra parameters passed to the weak learner.
     """
 
     algorithm_name = "qiskit"
@@ -176,10 +169,10 @@ class QiskitQBoostConfig(ClassifierConfig):
     weak_cls_params: dict | None = None
 
     def to_classifier_config(self) -> dict:
-        """Converts the config into keyword arguments for QBoostClassifier.
+        """Convert the config into keyword arguments for the backend model.
 
         Returns:
-            dict: A dictionary of hyperparameters suitable for QBoostClassifier(**kwargs).
+            dict: Keyword arguments for the QBoost constructor.
         """
         weak_cls_params = self.weak_cls_params or {}
         return {
@@ -196,7 +189,11 @@ class QiskitQBoostConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
-        """Short name identifying this classifier variant."""
+        """Return the user-facing name for this Qiskit-backed variant.
+
+        Returns:
+            str: Display label for the model.
+        """
         return f"Qiskit QBoost"
 
 
@@ -207,9 +204,14 @@ class QiskitQBoostConfig(ClassifierConfig):
 
 @register_classifier
 class QiskitQBoostAdapter(ClassifierAdapter[QiskitQBoostConfig]):
-    """Adapts eqc_models' QBoostClassifier (QCi Dirac-3) to ClassifierAdapter."""
+    """Wrap the Qiskit QBoost implementation in the shared adapter interface."""
 
     def __init__(self, config: QiskitQBoostConfig):
+        """Create the adapter and its Qiskit-backed model.
+
+        Args:
+            config (QiskitQBoostConfig): Qiskit QBoost configuration.
+        """
         super().__init__(config)
         self.model = QiskitQBoostClassifier(**config.to_classifier_config())
 
@@ -225,20 +227,43 @@ class QiskitQBoostAdapter(ClassifierAdapter[QiskitQBoostConfig]):
         self.model.get_hamiltonian = timed_get_hamiltonian
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
-        """Submits a training job to QCi Dirac-3 and fits in place."""
+        """Train the Qiskit-backed model in place.
+
+        Args:
+            X_train (np.ndarray): Training feature matrix.
+            y_train (np.ndarray): Training labels.
+        """
         self.model.fit(X_train, y_train)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Returns hard {-1, +1} predictions."""
+        """Return hard class predictions in the shared {-1, 1} format.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Predicted labels.
+        """
         return self.model.predict(X)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Maps QBoost's raw scores in [-1, +1] to probabilities in [0, 1]."""
+        """Return the positive-class probability for each row.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Probability of the positive class.
+        """
         raw_scores = self.model.predict_raw(X)
         return np.clip(0.5 * (raw_scores + 1.0), 0.0, 1.0)
 
     def save(self, path: Path) -> None:
-        """Persists the fitted model's boosting state as a joblib bundle."""
+        """Persist the fitted model state to a joblib bundle.
+
+        Args:
+            path (Path): Output location for the saved model state.
+        """
         bundle = {
             "h_list": self.model.h_list,
             "ind_list": self.model.ind_list,
@@ -251,7 +276,11 @@ class QiskitQBoostAdapter(ClassifierAdapter[QiskitQBoostConfig]):
         joblib.dump(bundle, path)
 
     def get_train_timing(self) -> dict[str, float] | None:
-        """Returns adapter-specific timing measurements."""
+        """Return the timing recorded for the Qiskit optimization step.
+
+        Returns:
+            dict[str, float] | None: Timing values recorded by the adapter.
+        """
         if self.model.minimize_elapsed is None:
             return None
         return {

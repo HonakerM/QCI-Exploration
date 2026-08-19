@@ -1,4 +1,4 @@
-"""Loads raw fraud-detection CSVs, combines them, and engineers features."""
+"""Load, clean, and split the fraud dataset used by the classifiers."""
 
 from pathlib import Path
 
@@ -328,10 +328,6 @@ def _scale_features(X_train: np.ndarray, X_test: np.ndarray, cfg: DataConfig) ->
 
     Returns:
         tuple[np.ndarray, np.ndarray]: (X_train, X_test), scaled if requested.
-
-    Raises:
-        ValueError: If `cfg.feature_scaling` is not one of "none", "minmax",
-            or "standard".
     """
     if cfg.feature_scaling == "none":
         return X_train, X_test
@@ -511,10 +507,6 @@ def _oversample(X_train, y_train, cfg: DataConfig):
 
     Returns:
         The resampled (X_train, y_train).
-
-    Raises:
-        ValueError: If `cfg.oversample_method` is not one of "smote",
-            "random", or "adasyn".
     """
     LOGGER.info(
         "  Oversampling with method=%s, ratio=%s",

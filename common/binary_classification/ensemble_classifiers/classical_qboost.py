@@ -1,3 +1,5 @@
+"""Wrap the classical QBoost solver behind the shared classifier adapter API."""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -91,21 +93,10 @@ class ClassicalQBoostClassifier(QBoostClassifier):
         self.minimize_elapsed = None
 
     def solve(self):  # type: ignore[override]
-        """Classically solves the bounded QUBO relaxation via L-BFGS-B.
+        """Solve the bounded QUBO relaxation with L-BFGS-B.
 
-        Reads `self._J`, `self._C`, and `self.upper_bound` exactly as
-        `set_model()` (inherited, unmodified) left them, and minimizes
-        `x'Jx + C'x` subject to `0 <= x <= upper_bound` — the same problem
-        `ClassifierBase.solve()` would otherwise ship to Dirac-3.
-
-        Returns
-        -------
-        sol : ndarray of shape (n_classifiers,)
-            The optimized per-weak-classifier weights.
-        response : dict
-            A small JSON-serializable summary of the classical solve,
-            standing in for the response QBoostClassifier.fit() would
-            otherwise get back from Dirac-3.
+        Returns:
+            tuple[np.ndarray, dict]: Optimized weights and the solve metadata.
         """
         J = self._J
         C = np.asarray(self._C, dtype=np.float64).reshape(-1)
@@ -152,16 +143,18 @@ class ClassicalQBoostClassifier(QBoostClassifier):
 
 @dataclass
 class ClassicalQBoostConfig(ClassifierConfig):
-    """Hyperparameters for the QBoostClassifier running on QCi Dirac-3.
+    """Store the configuration for the classical QBoost solver.
 
     Attributes:
-        relaxation_schedule (int): Relaxation schedule index used by the Dirac-3
-            solver.
-        num_samples (int): Number of samples requested from the solver.
-        lambda_coef (float): Regularization coefficient applied during training.
-        weak_cls_strategy (str): Strategy used to fit weak classifiers;
-            'sequential' is required on Windows (single-threaded weak
-            classifiers).
+        algorithm_name (str): Registry key used to resolve this adapter.
+        optimization_method (str): SciPy optimizer method used for the solve step.
+        relaxation_schedule (int): Relaxation schedule index sent to the solver.
+        num_samples (int): Number of samples requested from the backend.
+        lambda_coef (float): Regularization coefficient used in the objective.
+        weak_cls_strategy (str): Strategy for fitting the weak learners.
+        weak_cls_type (str): Type of weak learner used by the ensemble.
+        weak_cls_schedule (int): Schedule index for weak learners.
+        weak_cls_params (dict | None): Extra parameters passed to the weak learner.
     """
 
     algorithm_name = "classical_qboost"
@@ -177,10 +170,10 @@ class ClassicalQBoostConfig(ClassifierConfig):
     weak_cls_params: dict | None = None
 
     def to_classifier_config(self) -> dict:
-        """Converts the config into keyword arguments for QBoostClassifier.
+        """Convert the config into keyword arguments for the backend model.
 
         Returns:
-            dict: A dictionary of hyperparameters suitable for QBoostClassifier(**kwargs).
+            dict: Keyword arguments for the QBoost constructor.
         """
         weak_cls_params = self.weak_cls_params or {}
         return {
@@ -196,7 +189,11 @@ class ClassicalQBoostConfig(ClassifierConfig):
 
     @property
     def display_name(self) -> str:
-        """Short name identifying this classifier variant."""
+        """Return the user-facing name for this classical solver variant.
+
+        Returns:
+            str: Display label for the model.
+        """
         return f"Classical QBoost ({self.weak_cls_type} - {self.optimization_method})"
 
 
@@ -207,9 +204,14 @@ class ClassicalQBoostConfig(ClassifierConfig):
 
 @register_classifier
 class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
-    """Adapts eqc_models' QBoostClassifier (QCi Dirac-3) to ClassifierAdapter."""
+    """Wrap the classical QBoost implementation in the shared adapter interface."""
 
     def __init__(self, config: ClassicalQBoostConfig):
+        """Create the classical QBoost adapter.
+
+        Args:
+            config (ClassicalQBoostConfig): Classical QBoost configuration.
+        """
         super().__init__(config)
         self.model = ClassicalQBoostClassifier(**config.to_classifier_config())
 
@@ -225,20 +227,43 @@ class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
         self.model.get_hamiltonian = timed_get_hamiltonian
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
-        """Submits a training job to QCi Dirac-3 and fits in place."""
+        """Train the classical QBoost model in place.
+
+        Args:
+            X_train (np.ndarray): Training feature matrix.
+            y_train (np.ndarray): Training labels.
+        """
         self.model.fit(X_train, y_train)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Returns hard {-1, +1} predictions."""
+        """Return hard class predictions in the shared {-1, 1} format.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Predicted labels.
+        """
         return self.model.predict(X)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Maps QBoost's raw scores in [-1, +1] to probabilities in [0, 1]."""
+        """Return the positive-class probability for each row.
+
+        Args:
+            X (np.ndarray): Feature rows to score.
+
+        Returns:
+            np.ndarray: Probability of the positive class.
+        """
         raw_scores = self.model.predict_raw(X)
         return np.clip(0.5 * (raw_scores + 1.0), 0.0, 1.0)
 
     def save(self, path: Path) -> None:
-        """Persists the fitted model's boosting state as a joblib bundle."""
+        """Persist the fitted model state to a joblib bundle.
+
+        Args:
+            path (Path): Output location for the saved model state.
+        """
         bundle = {
             "h_list": self.model.h_list,
             "ind_list": self.model.ind_list,
@@ -251,7 +276,11 @@ class ClassicalQBoostAdapter(ClassifierAdapter[ClassicalQBoostConfig]):
         joblib.dump(bundle, path)
 
     def get_train_timing(self) -> dict[str, float] | None:
-        """Returns adapter-specific timing measurements."""
+        """Return the timing recorded for the classical solve step.
+
+        Returns:
+            dict[str, float] | None: Timing values captured during optimization.
+        """
         if self.model.minimize_elapsed is None:
             return None
         return {
