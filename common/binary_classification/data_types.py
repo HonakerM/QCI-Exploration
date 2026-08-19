@@ -475,7 +475,8 @@ class ModelResults:
         return (
             f"=== {self.model_name} ===\n"
             f"  Training time : {self.training_time_seconds:.2f}s\n"
-            f"  AUC           : {self.auc:.6f}\n"
+            f"  AUC-RC        : {self.auc:.6f}\n"
+            f"  AUC-PR        : {self.auc_pr:.6f}\n"
             f"  Log Loss      : {self.log_loss:.6f}\n"
             f"{self.train_metrics}\n"
             f"{self.test_metrics}"

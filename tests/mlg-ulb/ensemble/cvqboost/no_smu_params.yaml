@@ -9,10 +9,10 @@ classifier:
   weak_cls_params: {}
 data:
   # --- paths ---
-  train_file: data\mlg-ulb\train.csv
-  test_file: data\mlg-ulb\test.csv
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
   model_file: null
-  model_name_override: "cvqboost lg 1k oversample no-smu-params"
+  model_name_override: "ensemble cvqboost lg 1k oversample no-smu-params"
   index_column: id
   class_name: Class
 

@@ -1,26 +1,35 @@
-algorithm: qiskit
+algorithm: classical_qboost
 classifier:
-  classical: true
-  lambda_coef: 0.0
-  num_samples: 1
+  optimization_method: "L-BFGS-B"
   relaxation_schedule: 2
-  weak_cls_schedule: 1
+  num_samples: 1
+  lambda_coef: 0.0
   weak_cls_strategy: sequential
-  weak_cls_type: knn
+  weak_cls_type: xgb
+  weak_cls_schedule: 2
   weak_cls_params:
-    weights: uniform
-    n_neighbors: 15
-    metric: minkowski
+    n_estimators: 3093
+    min_child_weight: 1
+    max_depth: 12
+    learning_rate: 0.07516
+    subsample: 0.95
+    colsample_bytree: 0.95
+    reg_lambda: 1.5
+    reg_alpha: 1.5
+    gamma: 1.5
+    max_bin: 1024
+    random_state: 228
+    objective: "binary:logistic"
+    tree_method: "hist"
+    eval_metric: "auc"
 data:
-  # --- paths ---
   train_file: data\mlg-ulb\creditcard.csv
   test_file: null
   model_file: null
-  model_name_override: "classical lbfgs knn 1k oversample"
+  model_name_override: "ensemble classical xgb schedule2 hist 1k oversample"
   index_column: id
   class_name: Class
 
-  # --- feature selection ---
   v_feature_names: []
   engineered_feature_names:
   - Comp_Sum
@@ -35,31 +44,26 @@ data:
   - Amount
   - Time
 
-  # --- sampling / class balance ---
   enforce_equal_samples: true
   max_non_fraud_samples: 1000
   max_fraud_samples: null
   class_balance_ratio: null
   max_total_samples: null
 
-  # --- oversampling ---
   should_over_sample: true
   oversample_method: "smote"
   oversample_ratio: 1.0
 
-  # --- split ---
   test_size: 0.3
   split_method: "random"
   time_column: "Time"
   preserve_natural_test_distribution: false
 
-  # --- data quality ---
   drop_duplicates: false
   log_transform_amount: false
   amount_column: "Amount"
   feature_scaling: "none"
 
-  # --- reproducibility ---
   random_state: 42
   sample_random_state: null
   split_random_state: null

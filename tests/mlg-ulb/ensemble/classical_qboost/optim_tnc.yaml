@@ -12,10 +12,10 @@ classifier:
     C: 10
 data:
   # --- paths ---
-  train_file: data\mlg-ulb\train.csv
-  test_file: data\mlg-ulb\test.csv
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
   model_file: null
-  model_name_override: "classical tnc 1k oversample"
+  model_name_override: "ensemble classical tnc 1k oversample"
   index_column: id
   class_name: Class
 

@@ -16,8 +16,8 @@ classifier:
     eval_metric: "auc"
 data:
   # --- paths ---
-  train_file: data\mlg-ulb\train.csv
-  test_file: data\mlg-ulb\test.csv
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
   model_file: null
   model_name_override: "xgboost - low lr"
   index_column: id

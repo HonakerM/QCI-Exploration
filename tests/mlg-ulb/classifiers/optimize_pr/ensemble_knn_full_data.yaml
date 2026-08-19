@@ -16,8 +16,8 @@ classifier:
   max_iter: 1000
   tol: 1e-8
 data:
-  train_file: data\mlg-ulb\train.csv
-  test_file: data\mlg-ulb\test.csv
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
   model_file: null
   model_name_override: "classical qboost knn - schedule 2 - paper full data"
   index_column: id

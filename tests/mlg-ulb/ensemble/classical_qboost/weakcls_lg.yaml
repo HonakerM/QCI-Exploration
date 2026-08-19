@@ -1,22 +1,21 @@
-algorithm: qiskit
+algorithm: classical_qboost
 classifier:
-  classical: true
   lambda_coef: 0.0
   num_samples: 1
   relaxation_schedule: 2
   weak_cls_schedule: 1
   weak_cls_strategy: sequential
-  weak_cls_type: knn
+  weak_cls_type: lg
   weak_cls_params:
-    weights: uniform
-    n_neighbors: 15
-    metric: minkowski
+    penalty: l2
+    solver: lbfgs
+    C: 10
 data:
   # --- paths ---
   train_file: data\mlg-ulb\creditcard.csv
   test_file: null
   model_file: null
-  model_name_override: "classical lbfgs knn 1k oversample"
+  model_name_override: "ensemble classical lg 1k oversample"
   index_column: id
   class_name: Class
 

@@ -1,13 +1,13 @@
 {
-  "model_name": "ensemble classical tnc 1k oversample",
-  "training_time_seconds": 1.7720482999993692,
+  "model_name": "ensemble classical lg 1k oversample",
+  "training_time_seconds": 3.709818799999084,
   "timing": {
-    "data_prep": 1.5773762999997416,
+    "data_prep": 3.50556349999988,
     "fit": null,
-    "predict": 0.054470000000037544,
+    "predict": 0.054745899999943504,
     "adapter": {
-      "solve": 0.004234600000017963,
-      "get_hamiltonian": 0.13596739999957208
+      "solve": 0.0035782999993898557,
+      "get_hamiltonian": 0.14593109999987064
     }
   },
   "fpr": [
