@@ -198,8 +198,10 @@ def _prep_data_natural_test(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
     LOGGER.info(
         "  preserve_natural_test_distribution: train=%s rows (label counts=%s), "
         "test=%s rows (label counts=%s, natural/untouched)",
-        len(df_train), dict(Counter(df_train[cfg.class_name])),
-        len(df_test), dict(Counter(df_test[cfg.class_name])),
+        len(df_train),
+        dict(Counter(df_train[cfg.class_name])),
+        len(df_test),
+        dict(Counter(df_test[cfg.class_name])),
     )
 
     if cfg.uses_class_balancing:
@@ -217,7 +219,9 @@ def _prep_data_natural_test(df: pd.DataFrame, cfg: DataConfig) -> DataSplit:
     LOGGER.info(
         f"  Train (post-balancing): shape={X_train.shape}, label counts={dict(Counter(y_train))}"
     )
-    LOGGER.info(f"  Test (natural): shape={X_test.shape}, label counts={dict(Counter(y_test))}")
+    LOGGER.info(
+        f"  Test (natural): shape={X_test.shape}, label counts={dict(Counter(y_test))}"
+    )
 
     X_train, X_test = _scale_features(X_train, X_test, cfg)
 
@@ -254,7 +258,9 @@ def _apply_data_quality_steps(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame
         df = df.drop_duplicates().copy()
         LOGGER.info(
             "  drop_duplicates: %s -> %s rows (removed %s exact duplicates)",
-            before, len(df), before - len(df),
+            before,
+            len(df),
+            before - len(df),
         )
 
     if cfg.log_transform_amount:
@@ -271,7 +277,9 @@ def _apply_data_quality_steps(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame
     return df
 
 
-def _split_dataframe(df: pd.DataFrame, cfg: DataConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _split_dataframe(
+    df: pd.DataFrame, cfg: DataConfig
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Splits a DataFrame into train/test folds per `cfg.split_method`.
 
     `split_method="random"` (default) performs a stratified random split —
@@ -301,7 +309,9 @@ def _split_dataframe(df: pd.DataFrame, cfg: DataConfig) -> tuple[pd.DataFrame, p
         df_test = df_sorted.iloc[n_train:].copy()
         LOGGER.info(
             "  Chronological split by %s: train=%s rows (earliest), test=%s rows (latest)",
-            cfg.time_column, len(df_train), len(df_test),
+            cfg.time_column,
+            len(df_train),
+            len(df_test),
         )
         return df_train, df_test
 
@@ -314,7 +324,9 @@ def _split_dataframe(df: pd.DataFrame, cfg: DataConfig) -> tuple[pd.DataFrame, p
     return df_train.copy(), df_test.copy()
 
 
-def _scale_features(X_train: np.ndarray, X_test: np.ndarray, cfg: DataConfig) -> tuple[np.ndarray, np.ndarray]:
+def _scale_features(
+    X_train: np.ndarray, X_test: np.ndarray, cfg: DataConfig
+) -> tuple[np.ndarray, np.ndarray]:
     """Scales features per `cfg.feature_scaling`, fit on the training fold only.
 
     `feature_scaling="none"` (default) returns the arrays unchanged, so
@@ -351,7 +363,9 @@ def _scale_features(X_train: np.ndarray, X_test: np.ndarray, cfg: DataConfig) ->
 # ---------------------------------------------------------------------------
 
 
-def _resolve_class_targets(fraud_total: int, non_fraud_total: int, cfg: DataConfig) -> tuple[int, int]:
+def _resolve_class_targets(
+    fraud_total: int, non_fraud_total: int, cfg: DataConfig
+) -> tuple[int, int]:
     """Determines how many fraud / non-fraud rows to sample.
 
     Priority order (see DataConfig's docstring "Field reference" section
@@ -379,17 +393,23 @@ def _resolve_class_targets(fraud_total: int, non_fraud_total: int, cfg: DataConf
         fraud_n = min(cfg.max_fraud_samples, fraud_total)
         LOGGER.info(
             "  Fraud count source: max_fraud_samples=%s -> using %s of %s available",
-            cfg.max_fraud_samples, fraud_n, fraud_total,
+            cfg.max_fraud_samples,
+            fraud_n,
+            fraud_total,
         )
     else:
         fraud_n = fraud_total
-        LOGGER.info("  Fraud count source: default -> keeping all %s fraud rows", fraud_n)
+        LOGGER.info(
+            "  Fraud count source: default -> keeping all %s fraud rows", fraud_n
+        )
 
     if cfg.class_balance_ratio is not None:
         non_fraud_n = round(cfg.class_balance_ratio * fraud_n)
         LOGGER.info(
             "  Non-fraud count source: class_balance_ratio=%s x fraud_n(%s) -> %s",
-            cfg.class_balance_ratio, fraud_n, non_fraud_n,
+            cfg.class_balance_ratio,
+            fraud_n,
+            non_fraud_n,
         )
     elif cfg.max_non_fraud_samples is not None:
         non_fraud_n = cfg.max_non_fraud_samples
@@ -406,7 +426,8 @@ def _resolve_class_targets(fraud_total: int, non_fraud_total: int, cfg: DataConf
     if non_fraud_n > non_fraud_total:
         LOGGER.info(
             "  Requested non-fraud count %s exceeds %s available -> clamping",
-            non_fraud_n, non_fraud_total,
+            non_fraud_n,
+            non_fraud_total,
         )
         non_fraud_n = non_fraud_total
 
@@ -438,12 +459,16 @@ def _sample_by_class(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame:
     )
 
     if cfg.max_fraud_samples is not None:
-        df_fraud = df_fraud_all.sample(fraud_n, random_state=cfg.effective_sample_random_state)
+        df_fraud = df_fraud_all.sample(
+            fraud_n, random_state=cfg.effective_sample_random_state
+        )
     else:
         # Legacy path: keep every fraud row, untouched, no sampling call.
         df_fraud = df_fraud_all
 
-    df_non_fraud = df_non_fraud_all.sample(non_fraud_n, random_state=cfg.effective_sample_random_state)
+    df_non_fraud = df_non_fraud_all.sample(
+        non_fraud_n, random_state=cfg.effective_sample_random_state
+    )
 
     result = (
         pd.concat([df_non_fraud, df_fraud])
@@ -452,7 +477,9 @@ def _sample_by_class(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame:
     )
     LOGGER.info(
         "  Class-balanced sample: %s fraud + %s non-fraud = %s rows",
-        len(df_fraud), len(df_non_fraud), len(result),
+        len(df_fraud),
+        len(df_non_fraud),
+        len(result),
     )
     return result
 
@@ -477,7 +504,8 @@ def _cap_total_samples(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame:
 
     LOGGER.info(
         "  max_total_samples=%s < current %s rows -> taking a stratified subsample",
-        cfg.max_total_samples, len(df),
+        cfg.max_total_samples,
+        len(df),
     )
     trimmed, _ = train_test_split(
         df,
@@ -487,7 +515,8 @@ def _cap_total_samples(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame:
     )
     LOGGER.info(
         "  After max_total_samples trim: %s rows, label counts=%s",
-        len(trimmed), dict(Counter(trimmed[cfg.class_name])),
+        len(trimmed),
+        dict(Counter(trimmed[cfg.class_name])),
     )
     return trimmed
 
@@ -510,14 +539,24 @@ def _oversample(X_train, y_train, cfg: DataConfig):
     """
     LOGGER.info(
         "  Oversampling with method=%s, ratio=%s",
-        cfg.oversample_method, cfg.oversample_ratio,
+        cfg.oversample_method,
+        cfg.oversample_ratio,
     )
     if cfg.oversample_method == "smote":
-        sampler = SMOTE(sampling_strategy=cfg.oversample_ratio, random_state=cfg.effective_oversample_random_state)
+        sampler = SMOTE(
+            sampling_strategy=cfg.oversample_ratio,
+            random_state=cfg.effective_oversample_random_state,
+        )
     elif cfg.oversample_method == "random":
-        sampler = RandomOverSampler(sampling_strategy=cfg.oversample_ratio, random_state=cfg.effective_oversample_random_state)
+        sampler = RandomOverSampler(
+            sampling_strategy=cfg.oversample_ratio,
+            random_state=cfg.effective_oversample_random_state,
+        )
     elif cfg.oversample_method == "adasyn":
-        sampler = ADASYN(sampling_strategy=cfg.oversample_ratio, random_state=cfg.effective_oversample_random_state)
+        sampler = ADASYN(
+            sampling_strategy=cfg.oversample_ratio,
+            random_state=cfg.effective_oversample_random_state,
+        )
     else:
         raise ValueError(
             f"Unknown oversample_method {cfg.oversample_method!r}; "

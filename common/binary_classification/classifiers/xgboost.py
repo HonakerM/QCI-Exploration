@@ -6,7 +6,11 @@ from pathlib import Path
 import numpy as np
 from xgboost import XGBClassifier
 
-from common.binary_classification.base import ClassifierAdapter, ClassifierConfig, register_classifier
+from common.binary_classification.base import (
+    ClassifierAdapter,
+    ClassifierConfig,
+    register_classifier,
+)
 
 
 @dataclass
@@ -87,7 +91,9 @@ class XGBoostAdapter(ClassifierAdapter[XGBoostConfig]):
 
     def __init__(self, config: XGBoostConfig):
         super().__init__(config)
-        self.model = XGBClassifier(**config.to_classifier_config(), enable_categorical=True)
+        self.model = XGBClassifier(
+            **config.to_classifier_config(), enable_categorical=True
+        )
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
         # Adapter accepts labels in {-1, +1}; XGBoost requires {0, 1}.

@@ -5,11 +5,17 @@ import time
 from pathlib import Path
 import numpy as np
 from dotenv import load_dotenv
-from sklearn.metrics import auc, log_loss, precision_recall_curve, roc_auc_score, roc_curve
+from sklearn.metrics import (
+    auc,
+    log_loss,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+)
 import typer
 
-from common.binary_classification.ensemble_classifiers import *
-from common.binary_classification.classifiers import *
+from common.binary_classification.ensemble_classifiers import * # noqa: F403
+from common.binary_classification.classifiers import * # noqa: F403
 from common.binary_classification.base import (
     ClassifierAdapter,
     available_algorithms,
@@ -101,12 +107,19 @@ def train(
 
     # Precision-Recall: compute and guard against degenerate cases
     pr_precision, pr_recall, _ = precision_recall_curve(split.y_test, y_test_probs)
-    auc_pr = float(auc(pr_recall, pr_precision)) if pr_precision.size and pr_recall.size else 0.0
+    auc_pr = (
+        float(auc(pr_recall, pr_precision))
+        if pr_precision.size and pr_recall.size
+        else 0.0
+    )
 
     # Log diagnostic info if PR curve is empty
     if pr_precision.size == 0 or pr_recall.size == 0:
-        LOGGER.warning("PR arrays empty: y_test_bin unique=%s, y_test_probs unique head=%s", np.unique(y_test_bin), np.unique(y_test_probs)[:5])
-
+        LOGGER.warning(
+            "PR arrays empty: y_test unique=%s, y_test_probs unique head=%s",
+            np.unique(split.y_test),
+            np.unique(y_test_probs)[:5],
+        )
 
     adapter_timing = adapter.get_train_timing()
     if adapter_timing is not None:
@@ -155,7 +168,7 @@ def test_folder(
     dry_run: bool = False,
     display_plots: bool = False,
     suppress_warnings: bool = False,
-    rerun: bool = False
+    rerun: bool = False,
 ):
     """Run every YAML experiment file in a folder.
 
@@ -252,7 +265,9 @@ def test_file(
     )
 
     if dry_run:
-        LOGGER.info("--dry-run complete. Everything looks good - remove --dry-run to continue.")
+        LOGGER.info(
+            "--dry-run complete. Everything looks good - remove --dry-run to continue."
+        )
         LOGGER.info("done (%.1fs total)", time.time() - overall_start)
         return
 

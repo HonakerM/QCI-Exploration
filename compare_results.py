@@ -125,7 +125,12 @@ def main(
         try:
             from common.binary_classification.visualization import plot_pr_curves
 
-            plot_pr_curves(results, save_path=save_file.parent / (save_file.stem + "_pr.png") if save_file else None)
+            plot_pr_curves(
+                results,
+                save_path=save_file.parent / (save_file.stem + "_pr.png")
+                if save_file
+                else None,
+            )
         except Exception:
             # Optional PR plotting; ignore if unavailable
             pass

@@ -56,7 +56,9 @@ class ClassifierAdapter(ABC, Generic[TConfig]):
         Returns:
             type[TConfig]: Concrete config class for the adapter.
         """
-        for base in getattr(cls, "__orig_bases__", ()):  # pragma: no cover - typing helper
+        for base in getattr(
+            cls, "__orig_bases__", ()
+        ):  # pragma: no cover - typing helper
             if get_origin(base) is ClassifierAdapter:
                 args = get_args(base)
                 if args and isinstance(args[0], type):
@@ -129,7 +131,9 @@ class ClassifierAdapter(ABC, Generic[TConfig]):
 _REGISTRY: dict[str, type[ClassifierAdapter]] = {}
 
 
-def register_classifier(adapter_cls: type[ClassifierAdapter]) -> type[ClassifierAdapter]:
+def register_classifier(
+    adapter_cls: type[ClassifierAdapter],
+) -> type[ClassifierAdapter]:
     """Register a classifier adapter under its configured algorithm name.
 
     Args:

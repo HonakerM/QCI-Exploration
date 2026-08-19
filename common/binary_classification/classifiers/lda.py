@@ -9,7 +9,11 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from common.binary_classification.base import ClassifierAdapter, ClassifierConfig, register_classifier
+from common.binary_classification.base import (
+    ClassifierAdapter,
+    ClassifierConfig,
+    register_classifier,
+)
 
 
 @dataclass

@@ -110,7 +110,9 @@ class DataConfig:
             ("max_total_samples", self.max_total_samples),
         ):
             if value is not None and value <= 0:
-                raise ValueError(f"DataConfig.{name} must be a positive integer, got {value}")
+                raise ValueError(
+                    f"DataConfig.{name} must be a positive integer, got {value}"
+                )
 
         if self.class_balance_ratio is not None and self.class_balance_ratio <= 0:
             raise ValueError(
@@ -143,7 +145,11 @@ class DataConfig:
         Returns:
             int: Explicit sample seed or the default seed.
         """
-        return self.sample_random_state if self.sample_random_state is not None else self.random_state
+        return (
+            self.sample_random_state
+            if self.sample_random_state is not None
+            else self.random_state
+        )
 
     @property
     def effective_split_random_state(self) -> int:
@@ -152,7 +158,11 @@ class DataConfig:
         Returns:
             int: Explicit split seed or the default seed.
         """
-        return self.split_random_state if self.split_random_state is not None else self.random_state
+        return (
+            self.split_random_state
+            if self.split_random_state is not None
+            else self.random_state
+        )
 
     @property
     def effective_oversample_random_state(self) -> int:
@@ -179,6 +189,7 @@ class DataConfig:
             + self.engineered_feature_names
             + self.additional_feature_names
         )
+
 
 @dataclass
 class DataSplit:

@@ -74,7 +74,9 @@ def plot_pr_curves(
         results (list[ModelResults]): Model results to compare.
         save_path (Path | None): Optional PNG path for saving the figure.
     """
-    results = sorted(results, key=lambda r: r.auc_pr if hasattr(r, 'auc_pr') else 0.0, reverse=True)
+    results = sorted(
+        results, key=lambda r: r.auc_pr if hasattr(r, "auc_pr") else 0.0, reverse=True
+    )
     fig, ax = plt.subplots(figsize=(10, 8))
 
     for r, color in zip(results, _get_colors(len(results))):
@@ -82,12 +84,20 @@ def plot_pr_curves(
         recall = getattr(r, "pr_recall", None)
         if precision is None or recall is None or len(precision) == 0:
             continue
-        ax.plot(recall, precision, linewidth=2, color=color, label=f"{r.model_name} (AP = {getattr(r, 'auc_pr', 0.0):.4f})")
+        ax.plot(
+            recall,
+            precision,
+            linewidth=2,
+            color=color,
+            label=f"{r.model_name} (AP = {getattr(r, 'auc_pr', 0.0):.4f})",
+        )
 
     ax.set_xlabel("Recall", fontsize=12)
     ax.set_ylabel("Precision", fontsize=12)
     ax.set_title(
-        "Precision-Recall Curves: " + " vs ".join(r.model_name for r in results) + "\n Fraud Detection",
+        "Precision-Recall Curves: "
+        + " vs ".join(r.model_name for r in results)
+        + "\n Fraud Detection",
         fontsize=14,
         fontweight="bold",
     )
@@ -346,9 +356,6 @@ def _bar_chart(
             fontsize=11,
             fontweight="bold",
         )
-
-
-
 
 
 def _save_or_show(fig: Figure, save_path: Path | None) -> None:

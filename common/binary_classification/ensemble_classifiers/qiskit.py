@@ -9,7 +9,6 @@ from qiskit.primitives import StatevectorSampler
 from qiskit_optimization.algorithms import MinimumEigenOptimizer
 from qiskit_optimization.minimum_eigensolvers import QAOA, NumPyMinimumEigensolver
 from qiskit_optimization.optimizers import COBYLA
-from qiskit_aer.primitives import SamplerV2
 
 from common.binary_classification.base import (
     ClassifierAdapter,
@@ -114,16 +113,15 @@ class QiskitQBoostClassifier(QBoostClassifier):
             linear=C,
         )
 
-        
         if self.classical:
             mes = NumPyMinimumEigensolver()
         else:
             mes = QAOA(
-                        sampler=StatevectorSampler(seed=123),
-                        optimizer=COBYLA(),
-                        reps=2,
-                    )
-            
+                sampler=StatevectorSampler(seed=123),
+                optimizer=COBYLA(),
+                reps=2,
+            )
+
         optimizer = MinimumEigenOptimizer(mes)
 
         result = optimizer.solve(qp)
@@ -131,7 +129,7 @@ class QiskitQBoostClassifier(QBoostClassifier):
         x = np.asarray(result.x, dtype=int)
 
         response = {
-            "solver": f"qiskit qubo",
+            "solver": "qiskit qubo",
             "success": True,
             "n_iter": 1,
             "solve_time_seconds": 1,
@@ -194,7 +192,7 @@ class QiskitQBoostConfig(ClassifierConfig):
         Returns:
             str: Display label for the model.
         """
-        return f"Qiskit QBoost"
+        return "Qiskit QBoost"
 
 
 # ---------------------------------------------------------------------------

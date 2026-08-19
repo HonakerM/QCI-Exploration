@@ -9,7 +9,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from common.binary_classification.base import ClassifierAdapter, ClassifierConfig, register_classifier
+from common.binary_classification.base import (
+    ClassifierAdapter,
+    ClassifierConfig,
+    register_classifier,
+)
 
 
 @dataclass
@@ -33,7 +37,7 @@ class LogisticRegressionConfig(ClassifierConfig):
     C: float = 0.5
     solver: str = "lbfgs"
     max_iter: int = 2000
-    class_weight: str|None = "balanced"
+    class_weight: str | None = "balanced"
     tol: float = 1e-4
     random_state: int = 228
 
