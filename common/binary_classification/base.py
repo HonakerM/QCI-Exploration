@@ -56,13 +56,40 @@ class ClassifierAdapter(ABC, Generic[TConfig]):
         Returns:
             type[TConfig]: Concrete config class for the adapter.
         """
-        for base in getattr(
-            cls, "__orig_bases__", ()
-        ):  # pragma: no cover - typing helper
-            if get_origin(base) is ClassifierAdapter:
-                args = get_args(base)
-                if args and isinstance(args[0], type):
-                    return args[0]
+        seen: set[type] = set()
+
+        def resolve_config(current: type) -> type | None:
+            if current in seen:
+                return None
+            seen.add(current)
+
+            for base in getattr(current, "__orig_bases__", ()):
+                origin = get_origin(base)
+                if origin is not None:
+                    if origin is ClassifierAdapter:
+                        args = get_args(base)
+                        if args and isinstance(args[0], type):
+                            return args[0]
+                    if isinstance(origin, type) and issubclass(
+                        origin, ClassifierAdapter
+                    ):
+                        args = get_args(base)
+                        if args and isinstance(args[0], type):
+                            return args[0]
+                        resolved = resolve_config(origin)
+                        if resolved is not None:
+                            return resolved
+                elif isinstance(base, type) and issubclass(base, ClassifierAdapter):
+                    resolved = resolve_config(base)
+                    if resolved is not None:
+                        return resolved
+
+            return None
+
+        resolved = resolve_config(cls)
+        if resolved is not None:
+            return resolved
+
         raise TypeError(
             f"{cls.__name__} must parameterize ClassifierAdapter with its config type."
         )

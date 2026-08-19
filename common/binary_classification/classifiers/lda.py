@@ -1,19 +1,11 @@
 """Wrap the scikit-learn LDA model in the shared adapter interface."""
 
 from dataclasses import dataclass
-from pathlib import Path
 
-import joblib
-import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 
-from common.binary_classification.base import (
-    ClassifierAdapter,
-    ClassifierConfig,
-    register_classifier,
-)
+from common.binary_classification.base import ClassifierConfig, register_classifier
+from common.binary_classification.classifiers.sklearn import SklearnClassifierAdapter
 
 
 @dataclass
@@ -56,33 +48,7 @@ class LDAConfig(ClassifierConfig):
 
 
 @register_classifier
-class LDAAdapter(ClassifierAdapter[LDAConfig]):
+class LDAAdapter(SklearnClassifierAdapter[LDAConfig]):
     """Wrap sklearn LDA in the shared binary-classification adapter API."""
 
-    def __init__(self, config: LDAConfig):
-        """Create the scaled LDA pipeline.
-
-        Args:
-            config (LDAConfig): LDA hyperparameters.
-        """
-        super().__init__(config)
-        self.model = make_pipeline(
-            StandardScaler(),
-            LinearDiscriminantAnalysis(**config.to_classifier_config()),
-        )
-
-    def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
-        # Adapter accepts labels in {-1, +1}; sklearn is fine with either,
-        # but we map to {0, 1} for consistency with the other adapters.
-        y_mapped = np.where(y_train == 1, 1, 0).astype(int)
-        self.model.fit(X_train, y_mapped)
-
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        preds = self.model.predict(X).astype(int)
-        return np.where(preds == 1, 1, -1)
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        return self.model.predict_proba(X)[:, 1]
-
-    def save(self, path: Path) -> None:
-        joblib.dump(self.model, str(path))
+    estimator_cls = LinearDiscriminantAnalysis

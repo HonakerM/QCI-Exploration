@@ -1,10 +1,10 @@
 {
   "model_name": "knn - uniform weights",
-  "training_time_seconds": 1.7010561000206508,
+  "training_time_seconds": 1.4834884000010788,
   "timing": {
-    "data_prep": 1.6839997000060976,
-    "fit": 0.0019105999963358045,
-    "predict": 0.015145800018217415
+    "data_prep": 1.4616214000270702,
+    "fit": 0.0016018999740481377,
+    "predict": 0.020265099999960512
   },
   "fpr": [
     0.0,

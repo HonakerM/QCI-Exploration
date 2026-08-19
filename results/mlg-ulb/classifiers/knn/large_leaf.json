@@ -1,10 +1,10 @@
 {
   "model_name": "knn - large leaf",
-  "training_time_seconds": 1.8390637000557035,
+  "training_time_seconds": 1.4391961000510491,
   "timing": {
-    "data_prep": 1.8206205000169575,
-    "fit": 0.0021336000063456595,
-    "predict": 0.01630960003240034
+    "data_prep": 1.4183129000011832,
+    "fit": 0.001512400049250573,
+    "predict": 0.019370800000615418
   },
   "fpr": [
     0.0,

@@ -1,10 +1,10 @@
 {
   "model_name": "knn - kd tree",
-  "training_time_seconds": 1.8378346000099555,
+  "training_time_seconds": 1.6510603000060655,
   "timing": {
-    "data_prep": 1.7578468999709003,
-    "fit": 0.004891399992629886,
-    "predict": 0.07509630004642531
+    "data_prep": 1.5441476000123657,
+    "fit": 0.005340599978808314,
+    "predict": 0.10157210001489148
   },
   "fpr": [
     0.0,

@@ -1,16 +1,11 @@
 """Wrap the XGBoost classifier in the shared adapter interface."""
 
 from dataclasses import dataclass
-from pathlib import Path
 
-import numpy as np
 from xgboost import XGBClassifier
 
-from common.binary_classification.base import (
-    ClassifierAdapter,
-    ClassifierConfig,
-    register_classifier,
-)
+from common.binary_classification.base import ClassifierConfig, register_classifier
+from common.binary_classification.classifiers.sklearn import SklearnClassifierAdapter
 
 
 @dataclass
@@ -86,27 +81,22 @@ class XGBoostConfig(ClassifierConfig):
 
 
 @register_classifier
-class XGBoostAdapter(ClassifierAdapter[XGBoostConfig]):
+class XGBoostAdapter(SklearnClassifierAdapter[XGBoostConfig]):
     """Wrap the XGBoost classifier in the shared binary-classification adapter API."""
 
-    def __init__(self, config: XGBoostConfig):
-        super().__init__(config)
-        self.model = XGBClassifier(
-            **config.to_classifier_config(), enable_categorical=True
+    estimator_cls = XGBClassifier
+
+    def build_model(self):
+        """Create the XGBoost model with categorical support enabled."""
+        return self.estimator_cls(
+            **self.config.to_classifier_config(),
+            enable_categorical=True,
         )
 
-    def fit(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
-        # Adapter accepts labels in {-1, +1}; XGBoost requires {0, 1}.
-        y_mapped = np.where(y_train == 1, 1, 0).astype(int)
-        self.model.fit(X_train, y_mapped)
+    def save(self, path):
+        """Persist the fitted model to disk.
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        # Map back to {-1, +1} for compatibility with ensemble adapters.
-        preds = self.model.predict(X).astype(int)
-        return np.where(preds == 1, 1, -1)
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        return self.model.predict_proba(X)[:, 1]
-
-    def save(self, path: Path) -> None:
+        Args:
+            path: Output file for the serialized model.
+        """
         self.model.save_model(str(path))

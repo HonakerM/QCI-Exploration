@@ -1,10 +1,10 @@
 {
   "model_name": "knn - ball tree",
-  "training_time_seconds": 1.917985200008843,
+  "training_time_seconds": 3.999758900026791,
   "timing": {
-    "data_prep": 1.8366236999863759,
-    "fit": 0.005183700006455183,
-    "predict": 0.07617780001601204
+    "data_prep": 3.9249725000117905,
+    "fit": 0.004378599987830967,
+    "predict": 0.07040780002716929
   },
   "fpr": [
     0.0,

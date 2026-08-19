@@ -1,10 +1,10 @@
 {
   "model_name": "knn - manhattan dist",
-  "training_time_seconds": 1.7763487001066096,
+  "training_time_seconds": 1.4284348000073805,
   "timing": {
-    "data_prep": 1.7443777000298724,
-    "fit": 0.0016017000307329,
-    "predict": 0.030369300046004355
+    "data_prep": 1.3915255999891087,
+    "fit": 0.0015923000173643231,
+    "predict": 0.03531690000090748
   },
   "fpr": [
     0.0,
