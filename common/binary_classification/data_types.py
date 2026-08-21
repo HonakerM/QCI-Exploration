@@ -49,6 +49,7 @@ class DataConfig:
     # -----------------------------------------------------------------
     # Feature selection (unchanged).
     # -----------------------------------------------------------------
+    enable_engineered_features: bool = True
     v_feature_names: list[str] = field(default_factory=list)
 
     engineered_feature_names: list[str] = field(

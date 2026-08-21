@@ -87,7 +87,8 @@ def load_data(cfg: DataConfig) -> pd.DataFrame:
 
     cfg.v_feature_names = [str(col) for col in df if col.startswith("V")]
 
-    df = _engineer_v_features(df, cfg.v_feature_names)
+    if cfg.enable_engineered_features:
+        df = _engineer_v_features(df, cfg.v_feature_names)
     LOGGER.info("Final dataset: %s rows x %s columns", f"{len(df):,}", len(df.columns))
     return df
 

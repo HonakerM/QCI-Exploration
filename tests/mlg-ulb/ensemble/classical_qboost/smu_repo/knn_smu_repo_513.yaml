@@ -1,0 +1,53 @@
+algorithm: classical_qboost
+classifier:
+  optimization_method: "L-BFGS-B"
+  lambda_coef: 0.0               # paper: "weak-classifier schedule and λ fixed at 2 and 0"
+  weak_cls_strategy: sequential
+  weak_cls_type: knn
+  weak_cls_schedule: 2           # paper: fixed at 2
+  weak_cls_params:
+    n_neighbors: 15              # Table 1: "Nearest neighbours: 15"
+    weights: "uniform"           # Table 1: "Weights: Uniform"
+    metric: "minkowski"          # Table 1: "Metric: Minkowski"
+    p: 2                         # Table 1: "Power: Euclidean" -> Minkowski p=2 = Euclidean distance
+    leaf_size: 30                # Table 1: "Leaf size: 30"
+    n_jobs: 1                 # not specified in paper; leave at sklearn default
+data:
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
+  model_file: null
+  model_name_override: "SMU ensemble classical_qboost knn LBFGSB rs 513"
+  index_column: id
+  class_name: Class
+
+  enable_engineered_features: false
+  v_feature_names: []
+  engineered_feature_names: []
+  additional_feature_names:
+  - Amount
+  - Time
+
+  enforce_equal_samples: false
+  max_non_fraud_samples: null
+  max_fraud_samples: null
+  class_balance_ratio: null
+  max_total_samples: null
+
+  should_over_sample: true       # paper: "training-fold was over-sampled with SMOTE"
+  oversample_method: "smote"
+  oversample_ratio: 1.0
+
+  test_size: 0.3                 # paper: "split 70/30% into training-folds and test-folds"
+  split_method: "random"
+  time_column: "Time"
+  preserve_natural_test_distribution: true   # paper: "test-fold remained original... uncontaminated by synthetic samples"
+
+  drop_duplicates: false         # paper only describes removing rows with missing values — no dedup step
+  log_transform_amount: false    # not described in paper
+  amount_column: "Amount"
+  feature_scaling: "minmax"      # paper: "features were scaled to a representation between [0, 1]"
+
+  random_state: 513
+  sample_random_state: null
+  split_random_state: null
+  oversample_random_state: null

@@ -1,0 +1,59 @@
+algorithm: classical_qboost
+classifier:
+  optimization_method: "L-BFGS-B"
+  lambda_coef: 0.0
+  weak_cls_strategy: sequential
+  weak_cls_type: xgb
+  weak_cls_schedule: 2
+  weak_cls_params:
+    n_estimators: 100
+    max_depth: 3
+    learning_rate: 0.1
+    subsample: 1.0
+    colsample_bytree: 0.8
+    min_child_weight: 1          # present in paper's Table 8, was missing here
+    reg_lambda: 1.0
+    reg_alpha: 0.0
+    random_state: 3756
+    objective: "binary:logistic"
+    tree_method: "hist"
+    eval_metric: "auc"
+data:
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
+  model_file: null
+  model_name_override: "SMU ensemble classical_qboost xgb LBFGSB rs 3756"   # old name referenced "schedule2"/"1k" — quantum-solver artifacts that don't apply here
+  index_column: id
+  class_name: Class
+
+  enable_engineered_features: false
+  v_feature_names: []
+  engineered_feature_names: []
+  additional_feature_names:
+  - Amount
+  - Time
+
+  enforce_equal_samples: false
+  max_non_fraud_samples: null
+  max_fraud_samples: null
+  class_balance_ratio: null
+  max_total_samples: null
+
+  should_over_sample: true
+  oversample_method: "smote"
+  oversample_ratio: 1.0
+
+  test_size: 0.3
+  split_method: "random"
+  time_column: "Time"
+  preserve_natural_test_distribution: true   # paper: "test-fold remained original... evaluation was uncontaminated by synthetic samples"
+
+  drop_duplicates: false        # paper only says rows with missing values were removed — dedup isn't mentioned; your log's "removed 1081 exact duplicates" is a deviation from the described pipeline
+  log_transform_amount: false
+  amount_column: "Amount"
+  feature_scaling: "minmax"     # paper: "features were scaled to a representation between [0, 1]" — "none" doesn't reflect that
+
+  random_state: 3756
+  sample_random_state: null
+  split_random_state: null
+  oversample_random_state: null
