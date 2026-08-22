@@ -43,7 +43,7 @@ def plot_roc_curves(
             r.tpr,
             linewidth=2,
             color=color,
-            label=f"{r.model_name} (AUC = {r.auc:.4f}, AP = {getattr(r, 'auc_pr', 0.0):.4f})",
+            label=f"{r.run_label} (AUC = {r.auc:.4f}, AP = {getattr(r, 'auc_pr', 0.0):.4f})",
         )
 
     ax.plot([0, 1], [0, 1], "k--", linewidth=1, label="Random (AUC = 0.5000)")
@@ -51,7 +51,7 @@ def plot_roc_curves(
     ax.set_ylabel("True Positive Rate", fontsize=12)
     ax.set_title(
         "ROC Curves: "
-        + " vs ".join(r.model_name for r in results)
+        + " vs ".join(r.run_label for r in results)
         + "\n Fraud Detection",
         fontsize=14,
         fontweight="bold",
@@ -89,14 +89,14 @@ def plot_pr_curves(
             precision,
             linewidth=2,
             color=color,
-            label=f"{r.model_name} (AP = {getattr(r, 'auc_pr', 0.0):.4f})",
+            label=f"{r.run_label} (AP = {getattr(r, 'auc_pr', 0.0):.4f})",
         )
 
     ax.set_xlabel("Recall", fontsize=12)
     ax.set_ylabel("Precision", fontsize=12)
     ax.set_title(
         "Precision-Recall Curves: "
-        + " vs ".join(r.model_name for r in results)
+        + " vs ".join(r.run_label for r in results)
         + "\n Fraud Detection",
         fontsize=14,
         fontweight="bold",
@@ -119,7 +119,7 @@ def plot_metric_comparison(
         results (list[ModelResults]): Model results to compare.
         save_path (Path | None): Optional PNG path for saving the figure.
     """
-    names = [r.model_name for r in results]
+    names = [r.run_label for r in results]
     aucs = [r.auc for r in results]
     losses = [r.log_loss for r in results]
     colors = _get_colors(len(results))
@@ -162,7 +162,7 @@ def plot_timing_comparison(
         results (list[ModelResults]): Model results to compare.
         save_path (Path | None): Optional PNG path for saving the figure.
     """
-    names = [r.model_name for r in results]
+    names = [r.run_label for r in results]
     timing_values = [r.timing for r in results]
     adapter_keys: list[str] = []
     seen_keys: set[str] = set()

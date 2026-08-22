@@ -4,13 +4,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 import typer
 
-from common.data_files import convert_path_to_results
+from common.data_files import convert_path_to_results, convert_path_to_results_dir, load_yaml
 from common.logging import get_logger, setup_logging
 
 
 LOGGER = get_logger(__name__)
 
 APP = typer.Typer()
+
+
+def _results_target_for_yaml(file_path: Path) -> Path:
+    """Return the expected result path or directory for a YAML experiment file."""
+    data = load_yaml(file_path)
+    repetition = data.get("repetition") or data.get("reptition")
+    if repetition is not None:
+        return convert_path_to_results_dir(file_path)
+    return convert_path_to_results(file_path)
 
 
 @APP.command("test-folder")
@@ -34,10 +43,10 @@ def test_folder(
     setup_logging()
     for file in test_folder.glob("**/*.yaml"):
         LOGGER.info("Running test file: %s", file)
-        results = convert_path_to_results(file)
-        if results.exists() and not rerun:
+        results = _results_target_for_yaml(file)
+        if results.is_file() and results.exists() and not rerun:
             LOGGER.warning(
-                "Results file %s already exists. Skipping test file %s.",
+                "Results path %s already exists. Skipping test file %s.",
                 results,
                 file,
             )

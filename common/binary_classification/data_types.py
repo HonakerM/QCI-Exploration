@@ -193,6 +193,19 @@ class DataConfig:
 
 
 @dataclass
+class RepetitionConfig:
+    """Store the settings for repeated runs of a single YAML experiment."""
+
+    num: int
+    random_state: int
+
+    def __post_init__(self) -> None:
+        """Validate the repetition settings."""
+        if self.num <= 0:
+            raise ValueError(f"RepetitionConfig.num must be positive, got {self.num}")
+
+
+@dataclass
 class DataSplit:
     """Store the train/test feature matrices and label arrays for one dataset split."""
 
@@ -347,6 +360,8 @@ class ModelResults:
     train_metrics: ClassificationMetrics
     test_metrics: ClassificationMetrics
 
+    random_state: int | None = None
+
     pr_precision: np.ndarray = field(default_factory=lambda: np.asarray([]))
     pr_recall: np.ndarray = field(default_factory=lambda: np.asarray([]))
     auc_pr: float = 0.0
@@ -362,6 +377,13 @@ class ModelResults:
         """
         return self.timing.total_seconds
 
+    @property
+    def run_label(self) -> str:
+        """Return a display label that includes the run seed when available."""
+        if self.random_state is None:
+            return self.model_name
+        return f"{self.model_name} (rs={self.random_state})"
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize the model output to a JSON-safe dictionary.
 
@@ -370,6 +392,7 @@ class ModelResults:
         """
         return {
             "model_name": self.model_name,
+            "random_state": self.random_state,
             "training_time_seconds": self.training_time_seconds,
             "timing": self.timing.to_dict(),
             "fpr": self.fpr.tolist(),
@@ -428,6 +451,9 @@ class ModelResults:
             fpr=np.asarray(data["fpr"], dtype=float),
             tpr=np.asarray(data["tpr"], dtype=float),
             auc=float(data["auc"]),
+            random_state=(
+                None if data.get("random_state") is None else int(data["random_state"])
+            ),
             pr_precision=np.asarray(data.get("pr_precision", []), dtype=float),
             pr_recall=np.asarray(data.get("pr_recall", []), dtype=float),
             auc_pr=float(data.get("auc_pr", 0.0)),
@@ -473,9 +499,15 @@ class ModelResults:
         Returns:
             str: Text summary with timing, AUC, log loss, and metrics.
         """
+        random_state_line = (
+            f"  Random state  : {self.random_state}\n"
+            if self.random_state is not None
+            else ""
+        )
         return (
-            f"=== {self.model_name} ===\n"
+            f"=== {self.run_label} ===\n"
             f"  Training time : {self.training_time_seconds:.2f}s\n"
+            f"{random_state_line}"
             f"  AUC-RC        : {self.auc:.6f}\n"
             f"  AUC-PR        : {self.auc_pr:.6f}\n"
             f"  Log Loss      : {self.log_loss:.6f}\n"

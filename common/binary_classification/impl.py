@@ -1,5 +1,6 @@
 """Run binary-classification experiments defined by YAML config files."""
 
+import copy
 import time
 from pathlib import Path
 import numpy as np
@@ -23,6 +24,7 @@ from common.binary_classification.data_types import (
     DataConfig,
     DataSplit,
     ModelResults,
+    RepetitionConfig,
     TimingInfo,
 )
 from common.binary_classification.evaluation import compute_metrics, print_results
@@ -32,7 +34,13 @@ from common.binary_classification.visualization import (
     plot_roc_curves,
     plot_timing_comparison,
 )
-from common.data_files import convert_path_to_results, load_data_dict, load_yaml
+from common.data_files import (
+    convert_path_to_result_run,
+    convert_path_to_results,
+    convert_path_to_results_dir,
+    load_data_dict,
+    load_yaml,
+)
 from common.logging import get_logger
 
 
@@ -54,6 +62,7 @@ def train(
     adapter: ClassifierAdapter,
     data_cfg: DataConfig,
     data_prep_seconds: float = 0.0,
+    random_state: int | None = None,
 ) -> ModelResults:
     """Train an adapter and package the resulting metrics and timing.
 
@@ -130,6 +139,7 @@ def train(
 
     return ModelResults(
         model_name=model_name,
+        random_state=random_state,
         timing=TimingInfo(
             data_prep=data_prep_seconds,
             fit=fit_seconds,
@@ -146,6 +156,30 @@ def train(
         pr_recall=pr_recall,
         auc_pr=auc_pr,
     )
+
+
+def _load_repetition_config(data: dict) -> RepetitionConfig | None:
+    """Load the optional repetition block from a parsed YAML document."""
+    repetition_data = data.get("repetition")
+    if repetition_data is None:
+        repetition_data = data.get("reptition")
+    if repetition_data is None:
+        return None
+    return load_data_dict(repetition_data, RepetitionConfig)
+
+
+def _generate_run_random_states(repetition: RepetitionConfig) -> list[int]:
+    """Generate deterministic per-run seeds from the repetition seed."""
+    rng = np.random.default_rng(repetition.random_state)
+    return [
+        int(value)
+        for value in rng.integers(
+            0,
+            np.iinfo(np.uint32).max,
+            size=repetition.num,
+            dtype=np.uint32,
+        )
+    ]
 
 
 def test_file(
@@ -182,6 +216,7 @@ def test_file(
         raise ValueError("Missing 'classifier' key in test file. Must be a dict.")
 
     data_cfg = load_data_dict(data_config_raw, DataConfig)
+    repetition_cfg = _load_repetition_config(data)
     adapter_cls = get_adapter_cls(algorithm)
     classifier_cfg = load_data_dict(classifier_config_raw, adapter_cls.config_cls())
 
@@ -217,37 +252,79 @@ def test_file(
         LOGGER.info("done (%.1fs total)", time.time() - overall_start)
         return
 
-    # 4. Build the adapter and train
-    adapter = adapter_cls(classifier_cfg)
+    run_random_states = (
+        _generate_run_random_states(repetition_cfg)
+        if repetition_cfg is not None
+        else [data_cfg.random_state]
+    )
 
-    warning = adapter.submission_warning()
-    if not suppress_warnings and warning is not None:
-        LOGGER.error(warning)
-        LOGGER.error("TYPE `start` AND PRESS <enter> TO CONTINUE")
-        LOGGER.error("ANY OTHER INPUT OR <ctrl>+c WILL EXIT")
-        required_input = input()
-        if required_input.lower() != "start":
-            LOGGER.error("EXITING")
-            return
+    results = []
+    for run_random_state in run_random_states:
+        data_cfg_run = copy.deepcopy(data_cfg)
+        classifier_cfg_run = copy.deepcopy(classifier_cfg)
 
-    results = train(split, adapter, data_cfg, data_prep_seconds=data_prep_seconds)
+        if repetition_cfg is not None:
+            data_cfg_run.random_state = run_random_state
+            if hasattr(classifier_cfg_run, "random_state"):
+                setattr(classifier_cfg_run, "random_state", run_random_state)
+    
 
-    results_file = convert_path_to_results(test_file)
-    results_file.parent.mkdir(parents=True, exist_ok=True)
-    results.save(results_file)
-    LOGGER.info("Saved results to %s", results_file)
-    print_results(results)
+        # Skip if we've already done it
+        if repetition_cfg is None:
+            results_file = convert_path_to_results(test_file)
+        else:
+            results_file = convert_path_to_result_run(test_file, run_random_state)
+
+        if results_file.exists():
+            LOGGER.info("Skipping existing results at %s", results_file)
+            continue
+
+        # 4. Build the adapter and train
+        adapter = adapter_cls(classifier_cfg_run)
+
+        warning = adapter.submission_warning()
+        if not suppress_warnings and warning is not None:
+            LOGGER.error(warning)
+            LOGGER.error("TYPE `start` AND PRESS <enter> TO CONTINUE")
+            LOGGER.error("ANY OTHER INPUT OR <ctrl>+c WILL EXIT")
+            required_input = input()
+            if required_input.lower() != "start":
+                LOGGER.error("EXITING")
+                return
+
+        result = train(
+            split,
+            adapter,
+            data_cfg_run,
+            data_prep_seconds=data_prep_seconds,
+            random_state=data_cfg_run.random_state,
+        )
+
+        if repetition_cfg is None:
+            results_file = convert_path_to_results(test_file)
+        else:
+            results_file = convert_path_to_result_run(test_file, run_random_state)
+
+        if results_file.exists():
+            LOGGER.info("Skipping existing results at %s", results_file)
+            continue
+
+        results_file.parent.mkdir(parents=True, exist_ok=True)
+        result.save(results_file)
+        LOGGER.info("Saved results to %s", results_file)
+        print_results(result)
+        results.append(result)
 
     # 5. Visualize
     if display_plots:
-        plot_roc_curves([results])
-        plot_pr_curves([results])
-        plot_metric_comparison([results])
-        plot_timing_comparison([results])
+        plot_roc_curves(results)
+        plot_pr_curves(results)
+        plot_metric_comparison(results)
+        plot_timing_comparison(results)
     if save_plots:
         roc_path = Path("ensemble_roc.png") if save_plots else None
         metric_path = Path("ensemble_metrics.png") if save_plots else None
         timing_path = Path("ensemble_timing.png") if save_plots else None
-        plot_roc_curves([results], save_path=roc_path)
-        plot_metric_comparison([results], save_path=metric_path)
-        plot_timing_comparison([results], save_path=timing_path)
+        plot_roc_curves(results, save_path=roc_path)
+        plot_metric_comparison(results, save_path=metric_path)
+        plot_timing_comparison(results, save_path=timing_path)

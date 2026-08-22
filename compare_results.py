@@ -25,6 +25,8 @@ def save_results_csv(results: list[ModelResults], path: Path) -> None:
     """
     base_fields = [
         "model_name",
+        "run_label",
+        "random_state",
         "auc_roc",
         "auc_pr",
         "log_loss",
@@ -56,6 +58,8 @@ def save_results_csv(results: list[ModelResults], path: Path) -> None:
         for r in results:
             row: dict[str, object] = {
                 "model_name": r.model_name,
+                "run_label": r.run_label,
+                "random_state": r.random_state,
                 "auc_roc": r.auc,
                 "auc_pr": getattr(r, "auc_pr", 0.0),
                 "log_loss": r.log_loss,

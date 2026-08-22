@@ -74,6 +74,31 @@ def convert_path_to_results(path: Path) -> Path:
     Returns:
         Path: Matching results file path.
     """
+    return convert_path_to_results_dir(path).with_suffix(".json")
+
+
+def convert_path_to_results_dir(path: Path) -> Path:
+    """Map a test-definition path to the results directory path.
+
+    Args:
+        path (Path): Input path from the tests directory.
+
+    Returns:
+        Path: Matching results directory path.
+    """
     return Path(*("results" if p == "tests" else p for p in path.parts)).with_suffix(
-        ".json"
+        ""
     )
+
+
+def convert_path_to_result_run(path: Path, random_state: int) -> Path:
+    """Map a test-definition path and run seed to a seeded results JSON path.
+
+    Args:
+        path (Path): Input path from the tests directory.
+        random_state (int): Seed used for the run.
+
+    Returns:
+        Path: Matching per-run results file path.
+    """
+    return convert_path_to_results_dir(path) / f"{path.stem}_rs{random_state}.json"
