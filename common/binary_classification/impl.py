@@ -37,7 +37,6 @@ from common.binary_classification.visualization import (
 from common.data_files import (
     convert_path_to_result_run,
     convert_path_to_results,
-    convert_path_to_results_dir,
     load_data_dict,
     load_yaml,
 )
@@ -162,8 +161,6 @@ def _load_repetition_config(data: dict) -> RepetitionConfig | None:
     """Load the optional repetition block from a parsed YAML document."""
     repetition_data = data.get("repetition")
     if repetition_data is None:
-        repetition_data = data.get("reptition")
-    if repetition_data is None:
         return None
     return load_data_dict(repetition_data, RepetitionConfig)
 
@@ -220,37 +217,8 @@ def test_file(
     adapter_cls = get_adapter_cls(algorithm)
     classifier_cfg = load_data_dict(classifier_config_raw, adapter_cls.config_cls())
 
-    overall_start = time.time()
-    LOGGER.info("ensemble fraud start (algorithm=%s)", algorithm)
-
     if dry_run:
         LOGGER.info("--dry-run: credentials OK, loading data and prepping split...")
-
-    # 2. Load & engineer features
-    data_prep_start = time.perf_counter()
-    split = get_data_split(data_cfg)
-    data_prep_seconds = time.perf_counter() - data_prep_start
-
-    # validate that labels coming out of the loader are {-1, +1}
-    bad = split.y_test[~np.isin(split.y_test, [-1, 1])]
-    if len(bad):
-        raise AssertionError(
-            f"Classifiers here expect labels in {{-1, 1}}. Found: {bad}"
-        )
-
-    LOGGER.info(
-        "  %s train rows | %s test rows | %s features",
-        split.n_train,
-        split.n_test,
-        split.n_features,
-    )
-
-    if dry_run:
-        LOGGER.info(
-            "--dry-run complete. Everything looks good - remove --dry-run to continue."
-        )
-        LOGGER.info("done (%.1fs total)", time.time() - overall_start)
-        return
 
     run_random_states = (
         _generate_run_random_states(repetition_cfg)
@@ -260,6 +228,9 @@ def test_file(
 
     results = []
     for run_random_state in run_random_states:
+        overall_start = time.time()
+        LOGGER.info("ensemble fraud start (algorithm=%s)", algorithm)
+
         data_cfg_run = copy.deepcopy(data_cfg)
         classifier_cfg_run = copy.deepcopy(classifier_cfg)
 
@@ -267,7 +238,6 @@ def test_file(
             data_cfg_run.random_state = run_random_state
             if hasattr(classifier_cfg_run, "random_state"):
                 setattr(classifier_cfg_run, "random_state", run_random_state)
-    
 
         # Skip if we've already done it
         if repetition_cfg is None:
@@ -278,6 +248,32 @@ def test_file(
         if results_file.exists():
             LOGGER.info("Skipping existing results at %s", results_file)
             continue
+
+        # 2. Load & engineer features
+        data_prep_start = time.perf_counter()
+        split = get_data_split(data_cfg_run)
+        data_prep_seconds = time.perf_counter() - data_prep_start
+
+        # validate that labels coming out of the loader are {-1, +1}
+        bad = split.y_test[~np.isin(split.y_test, [-1, 1])]
+        if len(bad):
+            raise AssertionError(
+                f"Classifiers here expect labels in {{-1, 1}}. Found: {bad}"
+            )
+
+        LOGGER.info(
+            "  %s train rows | %s test rows | %s features",
+            split.n_train,
+            split.n_test,
+            split.n_features,
+        )
+
+        if dry_run:
+            LOGGER.info(
+                "--dry-run complete. Everything looks good - remove --dry-run to continue."
+            )
+            LOGGER.info("done (%.1fs total)", time.time() - overall_start)
+            return
 
         # 4. Build the adapter and train
         adapter = adapter_cls(classifier_cfg_run)

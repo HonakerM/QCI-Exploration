@@ -4,7 +4,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 import typer
 
-from common.data_files import convert_path_to_results, convert_path_to_results_dir, load_yaml
+from common.data_files import (
+    convert_path_to_results,
+    convert_path_to_results_dir,
+    load_yaml,
+)
 from common.logging import get_logger, setup_logging
 
 

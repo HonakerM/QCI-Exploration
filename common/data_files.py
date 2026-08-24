@@ -86,9 +86,7 @@ def convert_path_to_results_dir(path: Path) -> Path:
     Returns:
         Path: Matching results directory path.
     """
-    return Path(*("results" if p == "tests" else p for p in path.parts)).with_suffix(
-        ""
-    )
+    return Path(*("results" if p == "tests" else p for p in path.parts)).with_suffix("")
 
 
 def convert_path_to_result_run(path: Path, random_state: int) -> Path:
