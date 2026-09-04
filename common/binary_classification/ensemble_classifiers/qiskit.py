@@ -5,16 +5,20 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+from qiskit import generate_preset_pass_manager
 from qiskit.primitives import StatevectorSampler
 from qiskit_optimization.algorithms import MinimumEigenOptimizer
 from qiskit_optimization.minimum_eigensolvers import QAOA, NumPyMinimumEigensolver
 from qiskit_optimization.optimizers import COBYLA
+from qiskit_ibm_runtime import QiskitRuntimeService, Session
 
+from common.qiskit import get_client as get_qiskit_client
 from common.binary_classification.base import (
     ClassifierAdapter,
     ClassifierConfig,
     register_classifier,
 )
+from qiskit_aer.primitives import EstimatorV2
 
 import time
 
@@ -22,67 +26,55 @@ from qiskit_optimization import QuadraticProgram
 
 from eqc_models.ml.classifierqboost import QBoostClassifier
 
+import numpy as np
+from scipy.optimize import minimize
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.circuit.library import QAOAAnsatz
+from qiskit_aer.primitives import EstimatorV2, SamplerV2
+from qiskit_ibm_runtime import EstimatorV2 as RuntimeEstimator
+from qiskit_ibm_runtime import SamplerV2 as RuntimeSampler
+
+ 
+def qubo_to_ising_paulis(J: np.ndarray, C: np.ndarray):
+    """Convert a QUBO  minimize x^T J x + C^T x, x in {0,1}^n  into an
+    Ising Hamiltonian using the substitution x_i = (1 - z_i) / 2.
+ 
+    Assumes J is symmetric (symmetrize first if it isn't -- see note below).
+ 
+    Returns
+    -------
+    pauli_list : list[tuple[str, list[int], float]]
+        Sparse pauli terms, in the same ("ZZ"/"Z", qubits, coeff) format
+        used by `SparsePauliOp.from_sparse_list` / `build_max_cut_paulis`.
+    offset : float
+        Constant energy shift. The QUBO objective for a bitstring x equals
+        <H>_x + offset, where <H>_x is the Hamiltonian expectation value
+        on the corresponding computational basis state.
+    """
+    n = J.shape[0]
+    L = np.diag(J).copy() + C  # combined linear coefficients (diag(J) + C)
+ 
+    h = -L / 2.0
+    offset = np.sum(L) / 2.0
+    zz_terms = {}
+ 
+    for i in range(n):
+        for j in range(i + 1, n):
+            k_ij = J[i, j] + J[j, i]  # = 2*J[i, j] for symmetric J
+            if np.isclose(k_ij, 0.0):
+                continue
+            h[i] -= k_ij / 4.0
+            h[j] -= k_ij / 4.0
+            offset += k_ij / 4.0
+            zz_terms[(i, j)] = k_ij / 4.0
+ 
+    pauli_list = [("ZZ", [i, j], coeff) for (i, j), coeff in zz_terms.items()]
+    pauli_list += [("Z", [i], h[i]) for i in range(n) if not np.isclose(h[i], 0.0)]
+ 
+    return pauli_list, offset
+
 
 class QiskitQBoostClassifier(QBoostClassifier):
-    """QBoost with the Dirac-3 solve step replaced by scipy.optimize (L-BFGS-B).
-
-    `get_hamiltonian()` and `set_model()` are inherited unchanged, so
-    `fit()` (also inherited, unmodified) builds the exact same bounded QUBO
-    relaxation `(J, C, upper_bound)` it always would. The only difference is
-    `solve()`: where QBoostClassifier submits that problem to Dirac-3, this
-    class minimizes it directly with scipy's L-BFGS-B, which natively
-    supports the box constraints `0 <= x <= upper_bound` the problem is
-    already defined with.
-
-    Parameters
-    ----------
-    max_iter : int, default 1000
-        Maximum L-BFGS-B iterations.
-
-    tol : float, default 1e-8
-        Function-value convergence tolerance (`ftol`) for L-BFGS-B.
-
-    **kwargs
-        Forwarded to QBoostClassifier.__init__ (weak_cls_type,
-        weak_cls_schedule, weak_cls_strategy, lambda_coef, etc.). Dirac-3-
-        specific arguments (solver_access, api_url, api_token, ip_addr,
-        port, relaxation_schedule, num_samples) are accepted for signature
-        compatibility but unused by solve().
-
-    Examples
-    -----------
-
-    >>> from sklearn import datasets
-    >>> from sklearn.preprocessing import MinMaxScaler
-    >>> from sklearn.model_selection import train_test_split
-    >>> iris = datasets.load_iris()
-    >>> X = iris.data
-    >>> y = iris.target
-    >>> scaler = MinMaxScaler()
-    >>> X = scaler.fit_transform(X)
-    >>> for i in range(len(y)):
-    ...     if y[i] == 0:
-    ...         y[i] = -1
-    ...     elif y[i] == 2:
-    ...         y[i] = 1
-    >>> X_train, X_test, y_train, y_test = train_test_split(
-    ...     X,
-    ...     y,
-    ...     test_size=0.2,
-    ...     random_state=42,
-    ... )
-    >>> from eqc_models.ml.classical_qboost import ClassicalQBoostClassifier
-    >>> obj = ClassicalQBoostClassifier(weak_cls_strategy="sequential")
-    >>> from contextlib import redirect_stdout
-    >>> import io
-    >>> f = io.StringIO()
-    >>> with redirect_stdout(f):
-    ...    obj.fit(X_train, y_train)
-    ...    y_train_prd = obj.predict(X_train)
-    ...    y_test_prd = obj.predict(X_test)
-
-    """
-
     def __init__(
         self,
         classical: bool,
@@ -100,42 +92,51 @@ class QiskitQBoostClassifier(QBoostClassifier):
         """
         J = self._J
         C = np.asarray(self._C, dtype=np.float64).reshape(-1)
-
-        qp = QuadraticProgram()
-
         n = J.shape[0]
 
-        for i in range(n):
-            qp.binary_var(name=f"x_{i}")
+        pauli_list, offset = qubo_to_ising_paulis(J, C)
+        cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, n)
+        print("Cost Hamiltonian:", cost_hamiltonian)
+        print("Offset:", offset)
 
-        qp.minimize(
-            quadratic=J,
-            linear=C,
+        circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=2)
+        circuit.measure_all()
+        
+        initial_gamma = np.pi
+        initial_beta = np.pi / 2
+        init_params = [initial_beta, initial_beta, initial_gamma, initial_gamma]
+        
+        
+        def cost_func_estimator(params, ansatz, hamiltonian, estimator):
+            pub = (ansatz, hamiltonian, params)
+            job = estimator.run([pub])
+            cost = job.result()[0].data.evs
+            objective_func_vals.append(cost)
+            return cost
+        
+        
+        objective_func_vals = []
+        aer_estimator = EstimatorV2()
+
+        
+        result = minimize(
+            cost_func_estimator,
+            init_params,
+            args=(circuit.decompose(reps=10), cost_hamiltonian, aer_estimator),
+            method="COBYLA",
+            tol=1e-2,
         )
-
-        if self.classical:
-            mes = NumPyMinimumEigensolver()
-        else:
-            mes = QAOA(
-                sampler=StatevectorSampler(seed=123),
-                optimizer=COBYLA(),
-                reps=2,
-            )
-
-        optimizer = MinimumEigenOptimizer(mes)
-
-        result = optimizer.solve(qp)
-
-        x = np.asarray(result.x, dtype=int)
+        print(result)
 
         response = {
             "solver": "qiskit qubo",
             "success": True,
+
             "n_iter": 1,
             "solve_time_seconds": 1,
         }
 
-        return x, response
+        return None, response
 
 
 @dataclass
