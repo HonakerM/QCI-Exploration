@@ -1,0 +1,58 @@
+algorithm: cad
+classifier:
+  # Upstream defaults (github.com/JerryGao818/CAD, commit b609f6d) unless noted.
+  labeled_ratio: 0.05            # upstream default: share of anomalies kept labeled
+  learning_rate: 0.001           # upstream default
+  batch_size: 1024               # upstream default is 128; its own --batch_size help
+                                 # says to raise it on large datasets, and this fold
+                                 # is ~398k rows after SMOTE
+  n_epochs: null                 # null -> upstream rule (30 epochs at >= 50k rows)
+  early_stop: null               # null -> upstream rule (20 epochs at >= 50k rows)
+  hidden_layer: null             # null -> upstream rule (first of 4/8/16/32 >= dim/4)
+  n_channels: null               # null -> upstream rule (3 x hidden_layer slices)
+  min_anomaly: 32                # upstream mixes half..all labeled anomalies into
+  max_anomaly: 64                # every batch; with ~9.9k labeled anomalies here the
+                                 # pairwise distance matrix would be ~10k x 10k, so
+                                 # cap the anomaly side of the batch
+  contamination: 0.005           # not an upstream parameter: upstream reports ranking
+                                 # metrics only, so this sets the hard-label cut as a
+                                 # share of the reliable-normal score distribution
+data:
+  train_file: data\mlg-ulb\creditcard.csv
+  test_file: null
+  model_file: null
+  model_name_override: "SMU ensemble cad rs 1"
+  index_column: id
+  class_name: Class
+
+  enable_engineered_features: false
+  v_feature_names: []
+  engineered_feature_names: []
+  additional_feature_names:
+  - Amount
+  - Time
+
+  enforce_equal_samples: false
+  max_non_fraud_samples: null
+  max_fraud_samples: null
+  class_balance_ratio: null
+  max_total_samples: null
+
+  should_over_sample: true       # paper: "training-fold was over-sampled with SMOTE"
+  oversample_method: "smote"
+  oversample_ratio: 1.0
+
+  test_size: 0.3                 # paper: "split 70/30% into training-folds and test-folds"
+  split_method: "random"
+  time_column: "Time"
+  preserve_natural_test_distribution: true   # paper: "test-fold remained original... uncontaminated by synthetic samples"
+
+  drop_duplicates: false         # paper only describes removing rows with missing values — no dedup step
+  log_transform_amount: false    # not described in paper
+  amount_column: "Amount"
+  feature_scaling: "minmax"      # paper: "features were scaled to a representation between [0, 1]"
+
+  random_state: 42
+  sample_random_state: null
+  split_random_state: null
+  oversample_random_state: null

@@ -12,6 +12,10 @@ qiskit-optimization>=0.7
 qiskit-aer>=0.17.2
 # SMOTE and oversampling
 imbalanced-learn>=0.14
+# vendored upstream CAD (common/binary_classification/vendor/cad_upstream)
+torch>=2
+pyod>=2
+tqdm>=4
 # visualization
 matplotlib>=3
 # test file loading/writing
